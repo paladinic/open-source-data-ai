@@ -1,0 +1,145 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #f8f9fa;
+}
+
+.app-body {
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* ── Views ──────────────────────────────────────────────────── */
+
+.view { height: 100%; }
+
+.centered-form {
+  max-width: 600px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+/* ── Workspace layout ───────────────────────────────────────── */
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100%;
+}
+
+.ws-chat {
+  background: #fff;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ws-chat-header {
+  background: #f8f9fa;
+}
+
+.ws-editor {
+  min-width: 0;
+  background: #1e1e1e;
+}
+
+.ws-editor-toolbar {
+  background: #252526;
+  border-color: #3e3e42 !important;
+}
+
+.ws-editor-toolbar .btn-outline-secondary {
+  color: #ccc;
+  border-color: #555;
+}
+
+.ws-editor-toolbar .btn-outline-secondary:hover {
+  background: #3e3e42;
+  color: #fff;
+}
+
+#monaco-editor {
+  min-height: 0;
+}
+
+.run-result {
+  max-height: 280px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-size: 0.8rem;
+}
+
+.run-result .table {
+  color: #d4d4d4;
+  font-size: 0.75rem;
+}
+
+.run-result .table-light th {
+  background: #2d2d2d;
+  color: #ccc;
+  border-color: #3e3e42;
+}
+
+.run-result .table-bordered td,
+.run-result .table-bordered th {
+  border-color: #3e3e42;
+}
+
+/* ── Chat ───────────────────────────────────────────────────── */
+
+#chat-messages {
+  background: #f8f9fa;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  word-break: break-word;
+  font-size: 0.875rem;
+}
+
+.chat-bubble.user {
+  background: #0d6efd;
+  color: #fff;
+  margin-left: auto;
+}
+
+.chat-bubble.assistant {
+  background: #fff;
+  border: 1px solid #dee2e6;
+}
+
+/* ── Component list cards ───────────────────────────────────── */
+
+.list-card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+
+.list-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.pointer { cursor: pointer; }
+
+/* ── Badges ─────────────────────────────────────────────────── */
+
+.component-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-connector     { background: #e0f2fe; color: #0369a1; }
+.badge-pipeline      { background: #dcfce7; color: #166534; }
+.badge-visualisation { background: #fef9c3; color: #854d0e; }
+
+pre { white-space: pre-wrap; }

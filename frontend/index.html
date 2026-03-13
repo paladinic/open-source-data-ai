@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BI AI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark px-3 d-flex gap-3">
+    <a class="navbar-brand fw-bold me-0" href="/" onclick="App.showProjects(); return false;">BI AI</a>
+    <span id="breadcrumb" class="text-secondary small"></span>
+  </nav>
+
+  <div class="app-body">
+
+    <!-- ── View 1: Projects ──────────────────────────────────────── -->
+    <div id="view-projects" class="view">
+      <div class="centered-form">
+        <h5 class="mb-3">Projects</h5>
+        <div id="project-list" class="mb-3"></div>
+        <div class="input-group">
+          <input id="new-project-name" type="text" class="form-control" placeholder="New project name…"
+                 onkeydown="if(event.key==='Enter') App.createProject()" />
+          <button class="btn btn-primary" onclick="App.createProject()">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── View 2: Component list ────────────────────────────────── -->
+    <div id="view-component-list" class="view d-none">
+      <div class="centered-form">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">Components</h5>
+          <button class="btn btn-primary btn-sm" onclick="ComponentList.showCreateModal()">+ New component</button>
+        </div>
+        <div id="component-list-items"></div>
+      </div>
+    </div>
+
+    <!-- ── View 3: Workspace ─────────────────────────────────────── -->
+    <div id="view-workspace" class="view d-none workspace-layout">
+
+      <!-- Left: chat -->
+      <div class="ws-chat d-flex flex-column border-end">
+        <div class="ws-chat-header p-2 border-bottom d-flex align-items-center gap-2">
+          <span id="ws-component-type" class="component-badge"></span>
+          <span id="ws-component-name" class="fw-semibold small"></span>
+        </div>
+        <div id="chat-messages" class="flex-grow-1 p-3 overflow-auto"></div>
+        <div class="border-top p-2 d-flex gap-2">
+          <input id="chat-input" type="text" class="form-control form-control-sm"
+                 placeholder="Describe what to build or change…" />
+          <button class="btn btn-primary btn-sm" onclick="Chat.send()">Send</button>
+        </div>
+      </div>
+
+      <!-- Right: editor + run results -->
+      <div class="ws-editor d-flex flex-column">
+        <div class="ws-editor-toolbar border-bottom p-2 d-flex gap-2 align-items-center">
+          <span class="text-secondary small me-auto">Code / Config</span>
+          <button id="btn-save" class="btn btn-sm btn-outline-secondary" onclick="Workspace.save()">Save</button>
+          <button id="btn-run" class="btn btn-sm btn-success" onclick="Workspace.run()">▶ Run</button>
+        </div>
+        <div id="monaco-editor" class="flex-grow-1"></div>
+        <div id="run-result" class="run-result overflow-auto p-2 border-top"></div>
+      </div>
+
+    </div>
+
+  </div><!-- /app-body -->
+
+  <!-- Create component modal -->
+  <div class="modal fade" id="create-component-modal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">New component</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small">Name</label>
+            <input id="new-component-name" type="text" class="form-control form-control-sm"
+                   placeholder="e.g. google_sheet_connector"
+                   onkeydown="if(event.key==='Enter') ComponentList.createComponent()" />
+          </div>
+          <div>
+            <label class="form-label small">Type</label>
+            <select id="new-component-type" class="form-select form-select-sm">
+              <option value="connector">Connector</option>
+              <option value="pipeline">Pipeline</option>
+              <option value="visualisation">Visualisation</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary btn-sm" onclick="ComponentList.createComponent()">Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- Monaco loader -->
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs/loader.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/workspace.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
