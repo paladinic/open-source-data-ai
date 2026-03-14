@@ -37,5 +37,12 @@ const API = (() => {
 
     // Execute
     execute:         (pid, cid, inputs)    => request('POST',   `projects/${pid}/execute/${cid}`, { inputs: inputs || {} }),
+
+    // Dashboards
+    getDashboards:   (pid)                 => request('GET',    `projects/${pid}/dashboards/`),
+    createDashboard: (pid, name)           => request('POST',   `projects/${pid}/dashboards/`, { name }),
+    getDashboard:    (pid, did)            => request('GET',    `projects/${pid}/dashboards/${did}`),
+    updateDashboard: (pid, did, data)      => request('PATCH',  `projects/${pid}/dashboards/${did}`, data),
+    deleteDashboard: (pid, did)            => request('DELETE', `projects/${pid}/dashboards/${did}`),
   };
 })();

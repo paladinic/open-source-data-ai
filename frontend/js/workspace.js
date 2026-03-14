@@ -31,16 +31,11 @@ const Workspace = (() => {
   // ── Monaco ────────────────────────────────────────────────────────────────
 
   function _editorContent(component) {
-    if (component.type === 'visualisation') {
-      return component.config && Object.keys(component.config).length
-        ? JSON.stringify(component.config, null, 2)
-        : '{\n  "type": "line",\n  "data": {},\n  "options": {}\n}';
-    }
     return component.code || '';
   }
 
-  function _editorLanguage(component) {
-    return component.type === 'visualisation' ? 'json' : 'python';
+  function _editorLanguage(_component) {
+    return 'python';
   }
 
   function _initMonaco(component) {
@@ -92,12 +87,7 @@ const Workspace = (() => {
     btn.textContent = 'Saving…';
 
     try {
-      if (_component.type === 'visualisation') {
-        const config = JSON.parse(value);
-        await API.updateComponent(_projectId, _component.id, { config });
-      } else {
-        await API.updateComponent(_projectId, _component.id, { code: value });
-      }
+      await API.updateComponent(_projectId, _component.id, { code: value });
       _component = await API.getComponent(_projectId, _component.id);
       btn.textContent = 'Saved ✓';
       setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
@@ -111,6 +101,8 @@ const Workspace = (() => {
 
   // ── Run ───────────────────────────────────────────────────────────────────
 
+  let _chartInstance = null;
+
   async function run() {
     const resultEl = document.getElementById('run-result');
     resultEl.innerHTML = '<p class="text-secondary small">Running…</p>';
@@ -119,23 +111,26 @@ const Workspace = (() => {
     try {
       const result = await API.execute(_projectId, _component.id);
       if (result.success) {
-        let html = '';
-        if (result.columns.length) {
-          html += `<p class="small text-success mb-1">Columns: ${result.columns.map(escapeHtml).join(', ')}</p>`;
-        }
-        if (result.rows.length) {
-          html += renderTable(result.rows);
+        if (result.chart_config) {
+          _renderChart(resultEl, result.chart_config);
         } else {
-          html += '<p class="text-success small">Ran successfully (no rows returned).</p>';
-        }
-        if (result.stdout) {
-          html += `<pre class="small text-secondary mt-2">${escapeHtml(result.stdout)}</pre>`;
-        }
-        resultEl.innerHTML = html;
+          let html = '';
+          if (result.columns.length) {
+            html += `<p class="small text-success mb-1">Columns: ${result.columns.map(escapeHtml).join(', ')}</p>`;
+          }
+          if (result.rows.length) {
+            html += renderTable(result.rows);
+          } else {
+            html += '<p class="text-success small">Ran successfully (no rows returned).</p>';
+          }
+          if (result.stdout) {
+            html += `<pre class="small text-secondary mt-2">${escapeHtml(result.stdout)}</pre>`;
+          }
+          resultEl.innerHTML = html;
 
-        // Schema cached — refresh component so chat context is up to date
-        if (result.columns.length) {
-          _component = await API.getComponent(_projectId, _component.id);
+          if (result.columns.length) {
+            _component = await API.getComponent(_projectId, _component.id);
+          }
         }
       } else {
         resultEl.innerHTML = `<pre class="text-danger small">${escapeHtml(result.error)}</pre>`;
@@ -144,6 +139,17 @@ const Workspace = (() => {
       resultEl.innerHTML = `<p class="text-danger small">${escapeHtml(e.message)}</p>`;
     } finally {
       document.getElementById('btn-run').disabled = false;
+    }
+  }
+
+  function _renderChart(resultEl, config) {
+    if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+    resultEl.innerHTML = '<canvas id="viz-canvas"></canvas>';
+    const ctx = document.getElementById('viz-canvas').getContext('2d');
+    try {
+      _chartInstance = new Chart(ctx, config);
+    } catch (e) {
+      resultEl.innerHTML = `<p class="text-danger small">Chart error: ${escapeHtml(e.message)}</p>`;
     }
   }
 

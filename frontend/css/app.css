@@ -1,8 +1,120 @@
+/* ── Design tokens ──────────────────────────────────────────── */
+:root {
+  --accent:        #5b6af0;
+  --accent-hover:  #4757e8;
+  --accent-light:  #eef0fd;
+  --surface:       #ffffff;
+  --bg:            #f4f5f7;
+  --border:        #e2e4e9;
+  --text:          #1a1d23;
+  --text-muted:    #6b7280;
+  --radius:        8px;
+  --radius-lg:     12px;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
 html, body {
   height: 100%;
   margin: 0;
-  background: #f8f9fa;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* ── Bootstrap overrides ────────────────────────────────────── */
+
+/* Primary colour */
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-outline-primary { color: var(--accent); border-color: var(--accent); }
+.btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); }
+
+/* Buttons — softer radius, tighter padding */
+.btn {
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  letter-spacing: 0.01em;
+}
+.btn-sm { font-size: 0.75rem; padding: 4px 10px; }
+
+/* Inputs */
+.form-control, .form-select {
+  border-radius: var(--radius);
+  border-color: var(--border);
+  font-size: 0.85rem;
+  background: var(--surface);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91,106,240,0.12);
+}
+
+/* Navbar */
+.navbar {
+  background: #13151a !important;
+  border-bottom: 1px solid #1e2128;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  min-height: 52px;
+}
+.navbar-brand { font-size: 0.9rem; font-weight: 600; letter-spacing: -0.02em; }
+.navbar-brand svg { flex-shrink: 0; }
+.btn-outline-light {
+  border-color: #2e3240;
+  color: #9aa0b4;
+  font-size: 0.75rem;
+}
+.btn-outline-light:hover { background: #2e3240; color: #fff; border-color: #2e3240; }
+
+/* Nav section buttons */
+.nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+.nav-btn:hover:not(:disabled) {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.07);
+}
+.nav-btn.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+.nav-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Modal */
+.modal-content {
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+.modal-header, .modal-footer { border-color: var(--border); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
 .app-body {
   height: calc(100vh - 56px);
@@ -23,13 +135,17 @@ html, body {
 
 .workspace-layout {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 400px 1fr;
   height: 100%;
+  overflow: hidden;
 }
 
 .ws-chat {
   background: #fff;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -39,10 +155,13 @@ html, body {
 
 .ws-editor {
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
   background: #1e1e1e;
 }
 
 .ws-editor-toolbar {
+  flex-shrink: 0;
   background: #252526;
   border-color: #3e3e42 !important;
 }
@@ -58,14 +177,17 @@ html, body {
 }
 
 #monaco-editor {
+  flex: 2;
   min-height: 0;
 }
 
 .run-result {
-  max-height: 280px;
+  flex: 1;
+  min-height: 0;
   background: #1e1e1e;
   color: #d4d4d4;
   font-size: 0.8rem;
+  overflow: auto;
 }
 
 .run-result .table {
@@ -88,6 +210,13 @@ html, body {
 
 #chat-messages {
   background: #f8f9fa;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ws-chat-input-row {
+  flex-shrink: 0;
 }
 
 .chat-bubble {
@@ -100,7 +229,7 @@ html, body {
 }
 
 .chat-bubble.user {
-  background: #0d6efd;
+  background: var(--accent);
   color: #fff;
   margin-left: auto;
 }
@@ -113,16 +242,17 @@ html, body {
 /* ── Component list cards ───────────────────────────────────── */
 
 .list-card {
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 10px 14px;
   margin-bottom: 8px;
-  background: #fff;
-  transition: box-shadow 0.15s;
+  background: var(--surface);
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 
 .list-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  border-color: #c9cdd6;
 }
 
 .pointer { cursor: pointer; }
@@ -138,8 +268,165 @@ html, body {
   white-space: nowrap;
 }
 
-.badge-connector     { background: #e0f2fe; color: #0369a1; }
-.badge-pipeline      { background: #dcfce7; color: #166534; }
-.badge-visualisation { background: #fef9c3; color: #854d0e; }
+.badge-etl           { background: #ede9fe; color: #5b21b6; }
+.badge-visualisation { background: #fef3c7; color: #92400e; }
 
 pre { white-space: pre-wrap; }
+
+/* ── Dashboard ──────────────────────────────────────────────── */
+
+.dashboard-toolbar { flex-shrink: 0; }
+
+/* Free-form canvas — cards are absolutely positioned inside */
+.dashboard-grid {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  min-height: 600px;
+}
+
+.dash-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  touch-action: none;       /* required for interact.js */
+  user-select: none;
+  transition: box-shadow 0.12s;
+}
+
+.dash-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.dash-card.dragging { opacity: 0.5; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.dash-card.resizing { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+.dash-card-header {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.dash-drag-handle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.dash-card-name { font-weight: 600; color: var(--text-muted); }
+
+.dash-card-action {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.dash-card:hover .dash-card-action { opacity: 1; }
+.dash-card-action:hover { background: var(--border); }
+
+.dash-card-body {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dash-card-body canvas {
+  position: absolute;
+  inset: 8px;
+  width: calc(100% - 16px) !important;
+  height: calc(100% - 16px) !important;
+}
+
+.dash-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.dash-picker-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  min-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+/* ── Component type cards (wizard step 1) ───────────────────── */
+
+.type-card {
+  border: 2px solid #dee2e6;
+  border-radius: 10px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.type-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.type-card-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+/* ── @ Autocomplete ─────────────────────────────────────────── */
+
+.ws-chat-input-row { position: relative; }
+
+.at-autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  right: 8px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 4px 0;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.at-ac-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+}
+
+.at-ac-item:hover,
+.at-ac-item.active {
+  background: var(--accent-light);
+}

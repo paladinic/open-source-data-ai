@@ -35,15 +35,40 @@ const ComponentList = (() => {
   }
 
   function showCreateModal() {
+    // Reset to step 1
+    document.getElementById('wizard-step-1').classList.remove('d-none');
+    document.getElementById('wizard-step-2').classList.add('d-none');
     document.getElementById('new-component-name').value = '';
-    document.getElementById('new-component-type').value = 'connector';
+    document.getElementById('new-component-type').value = '';
+    document.getElementById('create-modal-title').textContent = 'New component';
+    document.getElementById('wizard-footer').innerHTML = '';
     new bootstrap.Modal(document.getElementById('create-component-modal')).show();
+  }
+
+  function selectType(type) {
+    document.getElementById('new-component-type').value = type;
+    document.getElementById('wizard-type-label').textContent = type;
+    document.getElementById('create-modal-title').textContent =
+      type === 'etl' ? 'New ETL component' : 'New Visualisation';
+    document.getElementById('wizard-step-1').classList.add('d-none');
+    document.getElementById('wizard-step-2').classList.remove('d-none');
+    document.getElementById('wizard-footer').innerHTML = `
+      <button class="btn btn-outline-secondary btn-sm" onclick="ComponentList.backToTypeStep()">Back</button>
+      <button class="btn btn-primary btn-sm" onclick="ComponentList.createComponent()">Create</button>`;
+    setTimeout(() => document.getElementById('new-component-name').focus(), 50);
+  }
+
+  function backToTypeStep() {
+    document.getElementById('wizard-step-2').classList.add('d-none');
+    document.getElementById('wizard-step-1').classList.remove('d-none');
+    document.getElementById('create-modal-title').textContent = 'New component';
+    document.getElementById('wizard-footer').innerHTML = '';
   }
 
   async function createComponent() {
     const name = document.getElementById('new-component-name').value.trim();
     const type = document.getElementById('new-component-type').value;
-    if (!name) return;
+    if (!name || !type) return;
     bootstrap.Modal.getInstance(document.getElementById('create-component-modal'))?.hide();
     const c = await API.createComponent(_projectId, name, type);
     App.openComponent(c.id);
@@ -55,5 +80,5 @@ const ComponentList = (() => {
     refresh();
   }
 
-  return { show, refresh, showCreateModal, createComponent, deleteComponent };
+  return { show, refresh, showCreateModal, selectType, backToTypeStep, createComponent, deleteComponent };
 })();

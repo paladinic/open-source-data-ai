@@ -13,10 +13,19 @@ const App = (() => {
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
+  function _updateNav(activeId) {
+    ['nav-home', 'nav-components', 'nav-dashboard'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.classList.toggle('active', id === activeId);
+      if (id !== 'nav-home') btn.disabled = !_projectId;
+    });
+  }
+
   async function showProjects() {
     _projectId = null;
     _projectName = '';
     setBreadcrumb('');
+    _updateNav('nav-home');
     showView('view-projects');
 
     const projects = await API.getProjects();
@@ -54,17 +63,33 @@ const App = (() => {
   async function openProject(projectId, projectName) {
     _projectId = projectId;
     _projectName = projectName;
-    setBreadcrumb(`<span class="pointer" onclick="App.showProjects()">Projects</span> › ${escapeHtml(projectName)}`);
-    await ComponentList.show(projectId);
+    showComponents();
   }
+
+  function showComponents() {
+    if (!_projectId) return;
+    setBreadcrumb(`<span class="pointer" onclick="App.showProjects()">Projects</span> › ${escapeHtml(_projectName)}`);
+    _updateNav('nav-components');
+    ComponentList.show(_projectId);
+  }
+
+  function showDashboardList() {
+    setBreadcrumb(`<span class="pointer" onclick="App.showProjects()">Projects</span> › \
+<span class="pointer" onclick="App.showComponents()">${escapeHtml(_projectName)}</span> › Dashboards`);
+    _updateNav('nav-dashboard');
+    Dashboard.showList(_projectId);
+  }
+
+  function showDashboard() { showDashboardList(); }
 
   // ── Workspace entry point ─────────────────────────────────────────────────
 
   async function openComponent(componentId) {
     const c = await API.getComponent(_projectId, componentId);
     setBreadcrumb(`<span class="pointer" onclick="App.showProjects()">Projects</span> › \
-<span class="pointer" onclick="App.openProject('${_projectId}','${escapeAttr(_projectName)}')">${escapeHtml(_projectName)}</span> › \
+<span class="pointer" onclick="App.showComponents()">${escapeHtml(_projectName)}</span> › \
 ${escapeHtml(c.name)}`);
+    _updateNav('nav-components');
     Workspace.open(_projectId, c);
   }
 
@@ -81,7 +106,7 @@ ${escapeHtml(c.name)}`);
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { init, showProjects, createProject, deleteProject, openProject, openComponent };
+  return { init, showProjects, createProject, deleteProject, openProject, showComponents, openComponent, showDashboard, showDashboardList };
 })();
 
 function escapeHtml(str) {
