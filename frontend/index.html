@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,28 +9,29 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="css/app.css" />
 </head>
+
 <body>
   <nav class="navbar navbar-dark bg-dark px-3 d-flex gap-3 align-items-center">
     <a class="navbar-brand d-flex align-items-center gap-2 me-0" href="/" onclick="App.showProjects(); return false;">
-      <svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g stroke="rgba(255,255,255,0.25)" stroke-width="3" fill="none" stroke-linecap="round">
-          <line x1="16" y1="16" x2="48" y2="16"/>
-          <line x1="16" y1="16" x2="16" y2="48"/>
-          <line x1="48" y1="16" x2="48" y2="48"/>
-          <line x1="16" y1="48" x2="48" y2="48"/>
+      <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round">
+          <line x1="16" y1="16" x2="48" y2="16" />
+          <line x1="16" y1="16" x2="16" y2="48" />
+          <line x1="48" y1="16" x2="48" y2="48" />
+          <line x1="16" y1="48" x2="48" y2="48" />
         </g>
-        <circle cx="16" cy="16" r="5" fill="#5b6af0"/>
-        <circle cx="48" cy="16" r="5" fill="#5b6af0"/>
-        <circle cx="16" cy="48" r="5" fill="#5b6af0"/>
-        <circle cx="48" cy="48" r="5" fill="#5b6af0"/>
+        <circle cx="16" cy="16" r="5" fill="#000" />
+        <circle cx="48" cy="16" r="5" fill="#000" />
+        <circle cx="16" cy="48" r="5" fill="#000" />
+        <circle cx="48" cy="48" r="5" fill="#000" />
       </svg>
       <span>BI Studio</span>
     </a>
     <span id="breadcrumb" class="text-secondary small flex-grow-1 ms-1"></span>
     <nav class="d-flex gap-1">
-      <button class="nav-btn" id="nav-home"       onclick="App.showProjects()">Home</button>
+      <button class="nav-btn" id="nav-home" onclick="App.showProjects()">Home</button>
       <button class="nav-btn" id="nav-components" onclick="App.showComponents()" disabled>Components</button>
-      <button class="nav-btn" id="nav-dashboard"  onclick="App.showDashboard()"  disabled>Dashboards</button>
+      <button class="nav-btn" id="nav-dashboard" onclick="App.showDashboard()" disabled>Dashboards</button>
     </nav>
   </nav>
 
@@ -41,8 +43,7 @@
         <h5 class="mb-3">Projects</h5>
         <div id="project-list" class="mb-3"></div>
         <div class="input-group">
-          <input id="new-project-name" type="text" class="form-control" placeholder="New project name…"
-                 onkeydown="if(event.key==='Enter') App.createProject()" />
+          <input id="new-project-name" type="text" class="form-control" placeholder="New project name…" onkeydown="if(event.key==='Enter') App.createProject()" />
           <button class="btn btn-primary" onclick="App.createProject()">Create</button>
         </div>
       </div>
@@ -81,8 +82,7 @@
         </div>
         <div id="chat-messages" class="flex-grow-1 p-3 overflow-auto"></div>
         <div class="ws-chat-input-row border-top p-2 d-flex gap-2">
-          <input id="chat-input" type="text" class="form-control form-control-sm"
-                 placeholder="Describe what to build or change…" />
+          <input id="chat-input" type="text" class="form-control form-control-sm" placeholder="Describe what to build or change…" />
           <button class="btn btn-primary btn-sm" onclick="Chat.send()">Send</button>
         </div>
       </div>
@@ -145,9 +145,7 @@
             <p class="text-secondary small mb-3">
               Give your <strong id="wizard-type-label"></strong> component a name.
             </p>
-            <input id="new-component-name" type="text" class="form-control" autofocus
-                   placeholder="e.g. sales_pipeline"
-                   onkeydown="if(event.key==='Enter') ComponentList.createComponent()" />
+            <input id="new-component-name" type="text" class="form-control" autofocus placeholder="e.g. sales_pipeline" onkeydown="if(event.key==='Enter') ComponentList.createComponent()" />
             <input type="hidden" id="new-component-type" />
           </div>
 
@@ -171,4 +169,5 @@
   <script src="js/dashboard.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>

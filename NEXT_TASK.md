@@ -1,0 +1,1 @@
+- add a "show password" check box in the login pages
