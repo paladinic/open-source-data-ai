@@ -6,9 +6,28 @@ const App = (() => {
   let _projectName = '';
 
   async function init() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { window.location.replace('/login'); return; }
+
+    try {
+      const user = await API.me();
+      const el = document.getElementById('nav-user-email');
+      if (el) el.textContent = user.email;
+    } catch {
+      window.location.replace('/login');
+      return;
+    }
+
     try { await API.health(); }
     catch { alert('Cannot reach backend. Make sure uvicorn is running.'); return; }
     showProjects();
+  }
+
+  async function logout() {
+    try { await API.logout(); } catch {}
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    window.location.replace('/login');
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -106,7 +125,7 @@ ${escapeHtml(c.name)}`);
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { init, showProjects, createProject, deleteProject, openProject, showComponents, openComponent, showDashboard, showDashboardList };
+  return { init, showProjects, createProject, deleteProject, openProject, showComponents, openComponent, showDashboard, showDashboardList, logout };
 })();
 
 function escapeHtml(str) {

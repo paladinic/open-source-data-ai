@@ -13,9 +13,16 @@
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
-html, body {
+html {
+  height: 100%;
+}
+
+body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
@@ -117,13 +124,14 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
 .app-body {
-  height: calc(100vh - 56px);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
 /* ── Views ──────────────────────────────────────────────────── */
 
-.view { height: 100%; }
+.view { height: 100%; overflow-y: auto; }
 
 .centered-form {
   max-width: 600px;
