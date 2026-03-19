@@ -15,7 +15,7 @@ Just Python, a terminal, and an LLM API key.
 ## 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-org/open-source-data-ai.git
+git clone https://github.com/paladinic/open-source-data-ai.git
 cd open-source-data-ai
 ```
 
