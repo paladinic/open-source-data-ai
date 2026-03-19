@@ -7,21 +7,41 @@
   <title>BI Studio</title>
   <link rel="icon" type="image/svg+xml" href="img/logo_bg.svg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.0/dist/css/tabulator_bootstrap5.min.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <script>try{var t=localStorage.getItem('bi-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(_){}</script>
 </head>
 
 <body>
   <nav class="navbar navbar-dark bg-dark px-3 d-flex gap-3 align-items-center">
-    <a class="navbar-brand d-flex align-items-center gap-2 me-0" href="/" onclick="App.showProjects(); return false;">
+    <a class="navbar-brand d-flex align-items-center gap-2 me-0" href="/" onclick="App.showHome(); return false;">
       <img src="img/full_logo white.svg" alt="">
     </a>
     <span id="breadcrumb" class="text-secondary small flex-grow-1 ms-1"></span>
     <nav class="d-flex gap-1 align-items-center">
-      <button class="nav-btn" id="nav-home" onclick="App.showProjects()">Home</button>
-      <button class="nav-btn" id="nav-components" onclick="App.showComponents()" disabled>Components</button>
-      <button class="nav-btn" id="nav-dashboard" onclick="App.showDashboard()" disabled>Dashboards</button>
+      <button class="nav-btn" id="nav-components-btn" style="display:none" onclick="App.showProjectHome()">Home</button>
+      <button class="nav-btn" id="nav-pipeline-btn" style="display:none" onclick="App.showPipeline()">Pipeline</button>
+      <!-- Always visible -->
+      <button class="nav-btn ms-1" onclick="Settings.open()">Settings</button>
+      <div class="dropdown" id="nav-new-btn" style="display:none">
+        <button class="nav-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">New</button>
+        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" onclick="ComponentList.showCreateModal();return false">Component</a></li>
+          <li><a class="dropdown-item" href="#" onclick="Dashboard.showCreateModal();return false">Dashboard</a></li>
+        </ul>
+      </div>
+      <!-- Project context - visible when a project is open -->
+      <div class="dropdown" id="nav-project-dropdown" style="display:none">
+        <button class="nav-btn dropdown-toggle" data-bs-toggle="dropdown" id="nav-project-btn">
+          <span id="nav-project-name">Project</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" id="nav-project-menu"></ul>
+      </div>
+      <span id="jobs-badge" class="jobs-badge" style="display:none" title="AI jobs running">
+        <span class="jobs-spinner"></span><span id="jobs-count">0</span>
+      </span>
       <span id="nav-user-email" class="text-secondary small ms-2"></span>
-      <button class="nav-btn ms-1" onclick="App.logout()">Sign out</button>
+      <button class="nav-btn ms-1" id="nav-logout-btn" onclick="App.logout()">Sign out</button>
     </nav>
   </nav>
 
@@ -33,29 +53,43 @@
         <h5 class="mb-3">Projects</h5>
         <div id="project-list" class="mb-3"></div>
         <div class="input-group">
-          <input id="new-project-name" type="text" class="form-control" placeholder="New project name…" onkeydown="if(event.key==='Enter') App.createProject()" />
+          <input id="new-project-name" type="text" class="form-control" placeholder="New project name…" autocomplete="off" onkeydown="if(event.key==='Enter') App.createProject()" />
           <button class="btn btn-primary" onclick="App.createProject()">Create</button>
         </div>
       </div>
     </div>
 
-    <!-- ── View 2: Component list ────────────────────────────────── -->
-    <div id="view-component-list" class="view d-none">
-      <div class="centered-form">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">Components</h5>
-          <button class="btn btn-primary btn-sm" onclick="ComponentList.showCreateModal()">+ New component</button>
+    <!-- ── View 2: Project home (components + dashboards) ───────── -->
+    <div id="view-project-home" class="view d-none project-home-layout">
+      <div class="project-home-section">
+        <div class="section-header mb-3">
+          <h6 class="mb-0 fw-semibold">Components</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="ComponentList.showCreateModal()">+ New</button>
+        </div>
+        <div class="d-flex gap-2 mb-3">
+          <input id="component-search" type="text" class="form-control form-control-sm" placeholder="Search…"
+                 oninput="ComponentList.applyFilters()" />
+          <select id="component-type-filter" class="form-select form-select-sm" style="width:auto"
+                  onchange="ComponentList.applyFilters()">
+            <option value="">All types</option>
+            <option value="etl">ETL</option>
+            <option value="model">Model</option>
+            <option value="visualisation">Visualisation</option>
+          </select>
+          <select id="component-sort" class="form-select form-select-sm" style="width:auto"
+                  onchange="ComponentList.applyFilters()">
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="type">Type</option>
+          </select>
         </div>
         <div id="component-list-items"></div>
       </div>
-    </div>
-
-    <!-- ── View 2b: Dashboard list ──────────────────────────────── -->
-    <div id="view-dashboard-list" class="view d-none">
-      <div class="centered-form">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">Dashboards</h5>
-          <button class="btn btn-primary btn-sm" onclick="Dashboard.showCreateModal()">+ New dashboard</button>
+      <div class="project-home-divider"></div>
+      <div class="project-home-section">
+        <div class="section-header mb-3">
+          <h6 class="mb-0 fw-semibold">Dashboards</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="Dashboard.showCreateModal()">+ New</button>
         </div>
         <div id="dashboard-list-items"></div>
       </div>
@@ -64,44 +98,135 @@
     <!-- ── View 3: Workspace ─────────────────────────────────────── -->
     <div id="view-workspace" class="view d-none workspace-layout">
 
-      <!-- Left: chat -->
-      <div class="ws-chat d-flex flex-column border-end">
-        <div class="ws-chat-header p-2 border-bottom d-flex align-items-center gap-2">
-          <span id="ws-component-type" class="component-badge"></span>
-          <span id="ws-component-name" class="fw-semibold small"></span>
-        </div>
-        <div id="chat-messages" class="flex-grow-1 p-3 overflow-auto"></div>
-        <div class="ws-chat-input-row border-top p-2 d-flex gap-2">
-          <input id="chat-input" type="text" class="form-control form-control-sm" placeholder="Describe what to build or change…" />
-          <button class="btn btn-primary btn-sm" onclick="Chat.send()">Send</button>
-        </div>
-      </div>
-
-      <!-- Right: editor + run results -->
+      <!-- Left: notebook editor -->
       <div class="ws-editor d-flex flex-column">
         <div class="ws-editor-toolbar border-bottom p-2 d-flex gap-2 align-items-center">
-          <span class="text-secondary small me-auto">Code / Config</span>
-          <button id="btn-save" class="btn btn-sm btn-outline-secondary" onclick="Workspace.save()">Save</button>
-          <button id="btn-run" class="btn btn-sm btn-success" onclick="Workspace.run()">▶ Run</button>
+          <span id="ws-component-type" class="component-badge"></span>
+          <span id="ws-component-name" class="fw-semibold small me-auto"></span>
+          <span id="ws-autosave-status" class="text-secondary small"></span>
+          <button class="btn btn-sm btn-outline-secondary" onclick="Workspace.importNotebook()" title="Import .ipynb">↑ Import</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="Workspace.exportNotebook()" title="Export .ipynb">↓ Export</button>
+          <button id="btn-run" class="btn btn-sm btn-success" onclick="Workspace.run()">▶ Run all</button>
         </div>
-        <div id="monaco-editor" class="flex-grow-1"></div>
-        <div id="run-result" class="run-result overflow-auto p-2 border-top"></div>
+        <div id="notebook-cells" class="nb-notebook overflow-auto flex-grow-1"></div>
+      </div>
+
+      <!-- Resize handle -->
+      <div id="ws-resize-handle" class="ws-resize-handle"></div>
+
+      <!-- Right: chat -->
+      <div class="ws-chat d-flex flex-column">
+        <div id="chat-messages" class="flex-grow-1 p-3 overflow-auto"></div>
+        <div class="ws-chat-input-row border-top p-2 d-flex flex-column gap-2">
+          <select id="chat-model-select" class="form-select form-select-sm chat-model-select"></select>
+          <div class="d-flex gap-2 align-items-end">
+            <textarea id="chat-input" class="form-control form-control-sm chat-textarea" rows="1" placeholder="Describe what to build or change…"></textarea>
+            <button class="btn btn-primary btn-sm flex-shrink-0" onclick="Chat.send()">Send</button>
+          </div>
+        </div>
       </div>
 
     </div>
 
-    <!-- ── View 4: Dashboard ─────────────────────────────────────── -->
+    <!-- ── View 4: Pipeline ──────────────────────────────────────── -->
+    <div id="view-pipeline" class="view d-none pipeline-view">
+      <div id="pipeline-toolbar" class="pipeline-toolbar border-bottom px-3 py-2 d-flex align-items-center gap-2"></div>
+      <div id="pipeline-canvas" class="pipeline-canvas"></div>
+    </div>
+
+    <!-- ── View 5: Dashboard ─────────────────────────────────────── -->
     <div id="view-dashboard" class="view d-none d-flex flex-column">
       <div class="dashboard-toolbar border-bottom px-3 py-2 d-flex align-items-center gap-2 bg-white flex-shrink-0">
         <span class="fw-semibold me-auto" id="dashboard-title">Dashboard</span>
         <button class="btn btn-sm btn-outline-secondary" onclick="Dashboard.renamePrompt()">Rename</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="Dashboard.addChart()">+ Add chart</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="Dashboard.showAddFilterModal()">⧗ Add filter</button>
+        <button class="btn btn-sm btn-outline-secondary" id="dashboard-present-btn" onclick="Dashboard.present()">⛶ Present</button>
         <button class="btn btn-sm btn-outline-danger" onclick="Dashboard.deleteCurrentDashboard()">Delete</button>
       </div>
+      <div id="dashboard-filters" class="dashboard-filters d-none px-3 py-2 border-bottom flex-shrink-0 d-flex gap-3 align-items-center flex-wrap"></div>
       <div id="dashboard-grid" class="dashboard-grid p-3"></div>
+    </div>
+    <!-- Floating exit button — only visible in presentation mode -->
+    <button id="present-exit-btn" class="present-exit-btn" onclick="Dashboard.exitPresent()" title="Exit presentation (Esc)">✕ Exit</button>
+
+    <!-- Running toast — visible whenever any job or execution is in flight -->
+    <div id="running-toast" class="running-toast">
+      <span class="running-toast-dot"></span>Running…
     </div>
 
   </div><!-- /app-body -->
+
+  <!-- Settings modal -->
+  <div class="modal fade" id="settings-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title">Settings</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- API Keys -->
+          <h6 class="settings-section-title">API Keys</h6>
+          <p class="text-secondary small mb-3">Keys are stored in your Supabase database. Leave blank to keep existing value.</p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Anthropic (Claude)</label>
+            <input id="settings-anthropic-key" type="password" class="form-control form-control-sm" placeholder="sk-ant-…" autocomplete="off" />
+            <div id="settings-anthropic-status" class="form-text"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">OpenAI</label>
+            <input id="settings-openai-key" type="password" class="form-control form-control-sm" placeholder="sk-…" autocomplete="off" />
+            <div id="settings-openai-status" class="form-text"></div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-semibold">Google (Gemini)</label>
+            <input id="settings-gemini-key" type="password" class="form-control form-control-sm" placeholder="AIza…" autocomplete="off" />
+            <div id="settings-gemini-status" class="form-text"></div>
+          </div>
+
+          <!-- Auto-retry -->
+          <h6 class="settings-section-title">Code Auto-Retry</h6>
+          <p class="text-secondary small mb-2">How many times the AI will automatically attempt to fix code errors after generating.</p>
+          <div class="mb-4 d-flex align-items-center gap-3">
+            <input id="settings-max-retries" type="number" class="form-control form-control-sm" min="1" max="10" style="width:80px" />
+            <span class="text-secondary small">attempts (1–10)</span>
+          </div>
+
+          <!-- Appearance -->
+          <h6 class="settings-section-title">Appearance</h6>
+          <div class="mb-4 d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="settings-dark-mode" role="switch">
+              <label class="form-check-label" for="settings-dark-mode">Dark mode</label>
+            </div>
+          </div>
+
+          <!-- Safe mode -->
+          <h6 class="settings-section-title">Safe Mode</h6>
+          <p class="text-secondary small mb-2">When on, generated code is <strong>never executed automatically</strong>. No auto-retry, no schema discovery, no dashboard auto-run. You must click ▶ Run manually. Recommended when connecting to paid APIs, cloud databases, or any resource with execution costs.</p>
+          <div class="mb-4 d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="settings-safe-mode" role="switch">
+              <label class="form-check-label" for="settings-safe-mode">Safe mode - require manual run</label>
+            </div>
+          </div>
+
+          <!-- System instructions -->
+          <h6 class="settings-section-title">System Instructions</h6>
+          <p class="text-secondary small mb-2">Applied to every chat. Use this for global preferences like units, formatting, or style rules.</p>
+          <textarea id="settings-instructions" class="form-control form-control-sm" rows="4" placeholder="e.g. Currency is £. Always remove grid lines from charts. Prefer dark colour schemes."></textarea>
+
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <span id="settings-save-status" class="text-secondary small me-auto"></span>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="Settings.save()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Create component modal (2-step wizard) -->
   <div class="modal fade" id="create-component-modal" tabindex="-1">
@@ -116,11 +241,16 @@
           <!-- Step 1: type selection -->
           <div id="wizard-step-1">
             <p class="text-secondary small mb-3">What kind of component do you want to build?</p>
-            <div class="d-flex gap-3">
+            <div class="d-flex gap-3 flex-wrap">
               <div class="type-card flex-fill" onclick="ComponentList.selectType('etl')">
                 <div class="type-card-icon">⚙️</div>
                 <div class="fw-semibold">ETL</div>
                 <div class="text-secondary small mt-1">Connect, transform &amp; load data</div>
+              </div>
+              <div class="type-card flex-fill" onclick="ComponentList.selectType('model')">
+                <div class="type-card-icon">🧠</div>
+                <div class="fw-semibold">Model</div>
+                <div class="text-secondary small mt-1">Fits on full data; ignores dashboard filters</div>
               </div>
               <div class="type-card flex-fill" onclick="ComponentList.selectType('visualisation')">
                 <div class="type-card-icon">📊</div>
@@ -135,7 +265,12 @@
             <p class="text-secondary small mb-3">
               Give your <strong id="wizard-type-label"></strong> component a name.
             </p>
-            <input id="new-component-name" type="text" class="form-control" autofocus placeholder="e.g. sales_pipeline" onkeydown="if(event.key==='Enter') ComponentList.createComponent()" />
+            <input id="new-component-name" type="text" class="form-control" autofocus autocomplete="off"
+                   placeholder="e.g. sales_pipeline"
+                   oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,''); document.getElementById('new-component-name-error').textContent=''"
+                   onkeydown="if(event.key==='Enter') ComponentList.createComponent()" />
+            <div class="form-text text-secondary">Letters, digits and underscores only. Must start with a letter or _.</div>
+            <div id="new-component-name-error" class="form-text text-danger"></div>
             <input type="hidden" id="new-component-type" />
           </div>
 
@@ -150,14 +285,20 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.32.0/plotly.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
   <!-- Monaco loader -->
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs/loader.js"></script>
+  <script src="js/jobs.js"></script>
   <script src="js/api.js"></script>
   <script src="js/components.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/workspace.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/pipeline.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/app.js"></script>
 </body>
 

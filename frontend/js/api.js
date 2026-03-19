@@ -4,11 +4,12 @@
 const API = (() => {
   const BASE = '/';
 
-  async function request(method, path, body) {
+  async function request(method, path, body, signal) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     const token = localStorage.getItem('auth_token');
     if (token) opts.headers['Authorization'] = `Bearer ${token}`;
     if (body !== undefined) opts.body = JSON.stringify(body);
+    if (signal) opts.signal = signal;
     const res = await fetch(BASE + path, opts);
     if (res.status === 401) {
       localStorage.removeItem('auth_token');
@@ -28,6 +29,7 @@ const API = (() => {
     health:          ()                           => request('GET',    'health'),
 
     // Auth
+    authConfig:      ()                           => request('GET',    'api/auth/config'),
     me:              ()                           => request('GET',    'api/auth/me'),
     logout:          ()                           => request('POST',   'api/auth/logout'),
     createUser:      (email, password, role)      => request('POST',   'api/auth/users', { email, password, role }),
@@ -46,10 +48,17 @@ const API = (() => {
 
     // Chat (per-component)
     getHistory:      (pid, cid)                   => request('GET',    `projects/${pid}/components/${cid}/chat/`),
-    sendMessage:     (pid, cid, msg)              => request('POST',   `projects/${pid}/components/${cid}/chat/`, { message: msg }),
+    sendMessage:     (pid, cid, msg, signal)       => request('POST',   `projects/${pid}/components/${cid}/chat/`, { message: msg }, signal),
+    getJobStatus:    (pid, cid, jobId)            => request('GET',    `projects/${pid}/components/${cid}/chat/jobs/${jobId}`),
 
     // Execute
     execute:         (pid, cid, inputs)           => request('POST',   `projects/${pid}/execute/${cid}`, { inputs: inputs || {} }),
+    executeCell:     (pid, cid, cellIndex)        => request('POST',   `projects/${pid}/execute/${cid}/cell`, { cell_index: cellIndex, inputs: {} }),
+    inspectColumns:  (pid, cid)                   => request('POST',   `projects/${pid}/execute/${cid}/columns`),
+
+    // Settings
+    getSettings:     ()                           => request('GET',    'settings/'),
+    updateSettings:  (data)                       => request('PUT',    'settings/', data),
 
     // Dashboards
     getDashboards:   (pid)                        => request('GET',    `projects/${pid}/dashboards/`),

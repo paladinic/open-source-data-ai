@@ -1,5 +1,5 @@
 /**
- * Chat panel — scoped to a single component thread.
+ * Chat panel - scoped to a single component thread.
  */
 const Chat = (() => {
   let _projectId = null;
@@ -20,7 +20,7 @@ const Chat = (() => {
       if (_handleAutocompleteKey(e)) return;
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     });
-    fresh.addEventListener('input', _onInput);
+    fresh.addEventListener('input', () => { _onInput(); _autoGrow(fresh); });
     fresh.addEventListener('blur', () => setTimeout(_hideAutocomplete, 150));
     fresh.focus();
   }
@@ -109,32 +109,68 @@ const Chat = (() => {
     scrollBottom();
   }
 
+  function _autoGrow(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }
+
   async function send() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    input.disabled = true;
+    input.style.height = 'auto';
 
     appendMessage('user', text);
     const typing = appendTyping();
 
+    let jobData;
     try {
-      const res = await API.sendMessage(_projectId, _componentId, text);
-      typing.remove();
-      appendMessage('assistant', res.reply);
-      if (res.component_updated) {
-        await Workspace.refreshEditor();
-        Workspace.run();  // auto-run without blocking the chat response
-      }
+      jobData = await API.sendMessage(_projectId, _componentId, text);
     } catch (e) {
+      typing._clearTimers?.();
       typing.remove();
       appendMessage('assistant', `Error: ${e.message}`);
-    } finally {
-      input.disabled = false;
-      document.getElementById('chat-input').focus();
       scrollBottom();
+      return;
     }
+
+    const { job_id } = jobData;
+    Jobs.add(job_id, `${_componentId}`);
+
+    // Re-enable input immediately — user can do other things while job runs
+    input.focus();
+
+    // Poll until done
+    const poll = async () => {
+      try {
+        const status = await API.getJobStatus(_projectId, _componentId, job_id);
+        if (status.status === 'pending') {
+          setTimeout(poll, 2000);
+          return;
+        }
+        Jobs.remove(job_id);
+        typing._clearTimers?.();
+        typing.remove();
+        if (status.status === 'done' && status.result) {
+          appendMessage('assistant', status.result.reply);
+          if (status.result.component_updated) {
+            await Workspace.refreshEditor();
+            Workspace.run();
+          }
+        } else {
+          appendMessage('assistant', `Error: ${status.error || 'Unknown error'}`);
+        }
+        scrollBottom();
+      } catch (e) {
+        Jobs.remove(job_id);
+        typing._clearTimers?.();
+        typing.remove();
+        appendMessage('assistant', `Error: ${e.message}`);
+        scrollBottom();
+      }
+    };
+    setTimeout(poll, 2000);
   }
 
   function appendMessage(role, content) {
@@ -151,7 +187,33 @@ const Chat = (() => {
   }
 
   function appendTyping() {
-    return appendMessage('assistant', '…');
+    const el = document.getElementById('chat-messages');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'd-flex justify-content-start mb-2';
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble assistant';
+
+    const dots = '<div class="dot-wave" aria-label="Loading" role="status"><span></span><span></span><span></span></div>';
+    const setStatus = msg => {
+      bubble.innerHTML = `${dots}<span class="chat-status-text">${msg}</span>`;
+      scrollBottom();
+    };
+    bubble.innerHTML = dots;
+
+    // Timed status hints - purely cosmetic, zero extra tokens
+    const stages = [
+      [5000,  'Generating code…'],
+      [12000, 'Testing code…'],
+      [20000, 'Fixing issues…'],
+      [30000, 'Almost done…'],
+    ];
+    const timers = stages.map(([delay, msg]) => setTimeout(() => setStatus(msg), delay));
+    wrapper._clearTimers = () => timers.forEach(clearTimeout);
+
+    wrapper.appendChild(bubble);
+    el.appendChild(wrapper);
+    scrollBottom();
+    return wrapper;
   }
 
   function scrollBottom() {
