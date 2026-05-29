@@ -4,6 +4,8 @@
 const App = (() => {
   let _projectId = null;
   let _projectName = '';
+  let _workspaceId = null;
+  let _userEmail = '';
 
   let _liteMode = false;
 
@@ -20,18 +22,41 @@ const App = (() => {
     _liteMode = !!config.lite;
 
     if (_liteMode) {
-      // Lite mode: set a dummy token so API calls include an Authorization header,
-      // hide the sign-out button and user email (not meaningful without auth).
       localStorage.setItem('auth_token', 'lite-mode');
-      document.getElementById('nav-user-email')?.style.setProperty('display', 'none', 'important');
-      document.getElementById('nav-logout-btn')?.style.setProperty('display', 'none', 'important');
+      const liteBadge = document.getElementById('nav-lite-badge');
+      if (liteBadge) liteBadge.style.display = 'inline';
+      const emailEl = document.getElementById('nav-user-email');
+      if (emailEl) emailEl.style.display = 'none';
+      const logoutBtn = document.getElementById('nav-logout-btn');
+      if (logoutBtn) logoutBtn.style.display = 'none';
     } else {
-      const token = localStorage.getItem('auth_token');
+      document.getElementById('nav-logout-btn')?.style.setProperty('display', '', 'important');
+      // Full mode: validate token via Supabase session
+      let token = localStorage.getItem('auth_token');
       if (!token) { window.location.replace('/login'); return; }
+
       try {
+        // Refresh session via Supabase client if available
+        if (typeof supabase !== 'undefined' && config.supabase_url) {
+          const sb = supabase.createClient(config.supabase_url, config.supabase_anon_key);
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session) { window.location.replace('/login'); return; }
+          token = session.access_token;
+          localStorage.setItem('auth_token', token);
+        }
+
         const user = await API.me();
-        const el = document.getElementById('nav-user-email');
-        if (el) el.textContent = user.email;
+        if (!user?.id) { window.location.replace('/login'); return; }
+
+        _userEmail = user.email || '';
+        const emailEl = document.getElementById('nav-user-email');
+        if (emailEl) emailEl.textContent = _userEmail;
+
+        // Init real-time collaboration
+        Collab.init(config.supabase_url, config.supabase_anon_key, token);
+
+        // Load workspace switcher
+        await _refreshWorkspaceSwitcher();
       } catch {
         window.location.replace('/login');
         return;
@@ -44,10 +69,62 @@ const App = (() => {
 
   async function logout() {
     if (_liteMode) return;
-    try { await API.logout(); } catch {}
+    try {
+      // Sign out from Supabase client side too
+      const config = await API.authConfig().catch(() => ({}));
+      if (config.supabase_url && typeof supabase !== 'undefined') {
+        const sb = supabase.createClient(config.supabase_url, config.supabase_anon_key);
+        await sb.auth.signOut().catch(() => {});
+      }
+      await API.logout();
+    } catch {}
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
     window.location.replace('/login');
+  }
+
+  // ── Workspace switcher ────────────────────────────────────────────────────
+
+  async function _refreshWorkspaceSwitcher() {
+    try {
+      const workspaces = await API.getWorkspaces();
+      if (!workspaces.length) return;
+      if (!_workspaceId) _workspaceId = workspaces[0].id;
+      const current = workspaces.find(w => w.id === _workspaceId) || workspaces[0];
+      const menu = document.getElementById('nav-workspace-menu');
+      const others = workspaces.filter(w => w.id !== _workspaceId);
+      // Detect duplicate names so we can show slug as disambiguator
+      const nameCounts = {};
+      workspaces.forEach(w => { nameCounts[w.name] = (nameCounts[w.name] || 0) + 1; });
+      const _label = w => nameCounts[w.name] > 1 ? `${escapeHtml(w.name)} <span class="text-secondary small">${escapeHtml(w.slug)}</span>` : escapeHtml(w.name);
+      document.getElementById('nav-workspace-name').textContent =
+        nameCounts[current.name] > 1 ? `${current.name} (${current.slug})` : current.name;
+      menu.innerHTML = others.map(w =>
+        `<li><a class="dropdown-item" href="#" onclick="App.switchWorkspace('${w.id}');return false">${_label(w)}</a></li>`
+      ).join('');
+      if (others.length) menu.innerHTML += '<li><hr class="dropdown-divider"></li>';
+      menu.innerHTML += `<li><a class="dropdown-item" href="#" onclick="App.showSettings('workspaces');return false">Manage team…</a></li>
+        <li><a class="dropdown-item" href="#" onclick="App.promptNewWorkspace();return false">+ New workspace</a></li>`;
+      document.getElementById('nav-workspace-dropdown').style.display = '';
+    } catch { /* non-fatal */ }
+  }
+
+  async function switchWorkspace(workspaceId) {
+    _workspaceId = workspaceId;
+    _projectId = null;
+    _projectName = '';
+    await _refreshWorkspaceSwitcher();
+    showProjects();
+  }
+
+  async function promptNewWorkspace() {
+    const name = prompt('New workspace name:');
+    if (!name || !name.trim()) return;
+    try {
+      await API.createWorkspace(name.trim());
+      await _refreshWorkspaceSwitcher();
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -60,12 +137,13 @@ const App = (() => {
   }
 
   async function _refreshProjectDropdown() {
-    const projects = await API.getProjects();
+    const projects = await API.getProjects(_workspaceId);
     const menu = document.getElementById('nav-project-menu');
-    menu.innerHTML = projects
-      .filter(p => p.id !== _projectId)
-      .map(p => `<li><a class="dropdown-item" href="#" onclick="App.openProject('${p.id}','${escapeAttr(p.name)}');return false">${escapeHtml(p.name)}</a></li>`)
-      .join('');
+    menu.innerHTML = projects.map(p =>
+      p.id === _projectId
+        ? `<li><a class="dropdown-item disabled text-secondary" aria-disabled="true">${escapeHtml(p.name)}</a></li>`
+        : `<li><a class="dropdown-item" href="#" onclick="App.openProject('${p.id}','${escapeAttr(p.name)}');return false">${escapeHtml(p.name)}</a></li>`
+    ).join('');
     menu.innerHTML += `<li><hr class="dropdown-divider"></li>
       <li><a class="dropdown-item" href="#" onclick="App.showProjects();return false">All projects…</a></li>`;
   }
@@ -82,7 +160,7 @@ const App = (() => {
     _setProjectContext(false);
     showView('view-projects');
 
-    const projects = await API.getProjects();
+    const projects = await API.getProjects(_workspaceId);
     const el = document.getElementById('project-list');
     if (!projects.length) {
       el.innerHTML = '<p class="text-secondary">No projects yet.</p>';
@@ -103,9 +181,13 @@ const App = (() => {
     const input = document.getElementById('new-project-name');
     const name = input.value.trim();
     if (!name) return;
-    await API.createProject(name, '');
-    input.value = '';
-    showProjects();
+    try {
+      await API.createProject(name, '', _workspaceId);
+      input.value = '';
+      showProjects();
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   async function deleteProject(projectId) {
@@ -149,9 +231,28 @@ const App = (() => {
     Workspace.open(_projectId, c);
   }
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  function showSettings(section) {
+    if (!_projectId) {
+      _setProjectContext(false);
+      setBreadcrumb('<a href="#" class="text-secondary" onclick="App.showProjects();return false">Projects</a> / Settings');
+    } else {
+      setBreadcrumb('Settings');
+    }
+    showView('view-settings');
+    Settings.load(section || 'ai');
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function showView(viewId) {
+    const wasWorkspace = !document.getElementById('view-workspace').classList.contains('d-none');
+    const wasSettings = !document.getElementById('view-settings').classList.contains('d-none');
+    if (wasWorkspace && viewId !== 'view-workspace') Collab.leave();
+    if (wasSettings && viewId !== 'view-settings' && Settings.isDirty()) {
+      if (!confirm('You have unsaved changes in Settings. Leave without saving?')) return;
+    }
     document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
     document.getElementById(viewId).classList.remove('d-none');
   }
@@ -162,7 +263,10 @@ const App = (() => {
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { init, showHome, showProjects, showProjectHome, showPipeline, createProject, deleteProject, openProject, showComponents, openComponent, logout };
+  function getWorkspaceId() { return _workspaceId; }
+  function getUserEmail() { return _userEmail; }
+
+  return { init, showHome, showProjects, showProjectHome, showPipeline, showSettings, createProject, deleteProject, openProject, showComponents, openComponent, logout, switchWorkspace, promptNewWorkspace, getWorkspaceId, getUserEmail };
 })();
 
 function escapeHtml(str) {

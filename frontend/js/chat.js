@@ -115,6 +115,7 @@ const Chat = (() => {
   }
 
   async function send() {
+    if (Collab.isLockedByOther()) return;
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (!text) return;
@@ -124,10 +125,13 @@ const Chat = (() => {
     appendMessage('user', text);
     const typing = appendTyping();
 
+    Collab.broadcastLock(true);
+
     let jobData;
     try {
       jobData = await API.sendMessage(_projectId, _componentId, text);
     } catch (e) {
+      Collab.broadcastLock(false);
       typing._clearTimers?.();
       typing.remove();
       appendMessage('assistant', `Error: ${e.message}`);
@@ -138,7 +142,6 @@ const Chat = (() => {
     const { job_id } = jobData;
     Jobs.add(job_id, `${_componentId}`);
 
-    // Re-enable input immediately — user can do other things while job runs
     input.focus();
 
     // Poll until done
@@ -150,6 +153,7 @@ const Chat = (() => {
           return;
         }
         Jobs.remove(job_id);
+        Collab.broadcastLock(false);
         typing._clearTimers?.();
         typing.remove();
         if (status.status === 'done' && status.result) {
@@ -164,6 +168,7 @@ const Chat = (() => {
         scrollBottom();
       } catch (e) {
         Jobs.remove(job_id);
+        Collab.broadcastLock(false);
         typing._clearTimers?.();
         typing.remove();
         appendMessage('assistant', `Error: ${e.message}`);

@@ -29,7 +29,38 @@ const Settings = (() => {
     },
   };
 
-  let _current = null; // last-loaded SettingsResponse
+  let _current = null;
+  let _dirty = false;
+  let _listenersAttached = false;
+
+  function _markDirty() {
+    _dirty = true;
+    const badge = document.getElementById('settings-unsaved-badge');
+    if (badge) badge.style.display = '';
+  }
+
+  function _markClean() {
+    _dirty = false;
+    const badge = document.getElementById('settings-unsaved-badge');
+    if (badge) badge.style.display = 'none';
+  }
+
+  function isDirty() { return _dirty; }
+
+  function _attachDirtyListeners() {
+    if (_listenersAttached) return;
+    _listenersAttached = true;
+    const ids = [
+      'settings-anthropic-key', 'settings-openai-key', 'settings-gemini-key',
+      'settings-instructions', 'settings-max-retries',
+    ];
+    ids.forEach(id => {
+      document.getElementById(id)?.addEventListener('input', _markDirty);
+    });
+    ['settings-dark-mode', 'settings-safe-mode'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', _markDirty);
+    });
+  }
 
   function applyTheme(dark) {
     const theme = dark ? 'dark' : 'light';
@@ -93,10 +124,21 @@ const Settings = (() => {
     } catch (_) {}
   }
 
-  // ── Settings modal ────────────────────────────────────────────────────────
+  // ── Settings page view ────────────────────────────────────────────────────
 
-  async function open() {
-    const modal = new bootstrap.Modal(document.getElementById('settings-modal'));
+  function showSection(name) {
+    const sections = ['ai', 'appearance', 'safemode', 'prompt', 'workspaces'];
+    sections.forEach(s => {
+      const el = document.getElementById(`settings-section-${s}`);
+      if (el) el.classList.toggle('d-none', s !== name);
+    });
+    document.querySelectorAll('.settings-nav-item').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('onclick') === `Settings.showSection('${name}')`);
+    });
+    if (name === 'workspaces') _loadTeam();
+  }
+
+  async function load(section) {
     document.getElementById('settings-save-status').textContent = '';
     document.getElementById('settings-anthropic-key').value = '';
     document.getElementById('settings-openai-key').value = '';
@@ -119,7 +161,77 @@ const Settings = (() => {
       document.getElementById('settings-save-status').textContent = `Load error: ${e.message}`;
     }
 
-    modal.show();
+    _markClean();
+    _attachDirtyListeners();
+    showSection(section || 'ai');
+  }
+
+  function open() {
+    App.showSettings();
+  }
+
+  async function deleteWorkspace() {
+    const wsId = App.getWorkspaceId();
+    if (!wsId) return;
+    if (!confirm('Delete this workspace? This will permanently delete all its projects and data. This cannot be undone.')) return;
+    try {
+      await API.deleteWorkspace(wsId);
+      window.location.replace('/');  // re-init; workspace is gone
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function _loadTeam() {
+    const section = document.getElementById('settings-section-workspaces');
+    try {
+      const { workspace, members, role } = await API.getMyWorkspace(App.getWorkspaceId());
+      if (!workspace) { return; }
+      document.getElementById('settings-workspace-name').textContent = workspace.name;
+      const canManage = role === 'owner' || role === 'admin';
+      const list = document.getElementById('settings-members-list');
+      list.innerHTML = (members || []).map(m => `
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="flex-grow-1 small">${escapeHtml(m.email || m.user_id)}</span>
+          <span class="badge bg-secondary">${m.role}</span>
+          ${canManage && m.role !== 'owner' ? `
+            <select class="form-select form-select-sm" style="width:auto"
+                    onchange="Settings.changeMemberRole('${m.user_id}', this.value)">
+              <option value="member" ${m.role==='member'?'selected':''}>Member</option>
+              <option value="admin"  ${m.role==='admin'?'selected':''}>Admin</option>
+            </select>
+            <button class="btn btn-sm btn-outline-danger" onclick="Settings.removeMember('${m.user_id}')">✕</button>
+          ` : ''}
+        </div>`).join('');
+    } catch {
+      // non-fatal; team section simply shows nothing
+    }
+  }
+
+  async function inviteMember() {
+    const email = document.getElementById('invite-email').value.trim();
+    const role  = document.getElementById('invite-role').value;
+    const statusEl = document.getElementById('invite-status');
+    if (!email) return;
+    statusEl.textContent = 'Sending invite…';
+    try {
+      const result = await API.inviteMember(email, role, App.getWorkspaceId());
+      statusEl.textContent = result.added_directly ? `Added to workspace` : `Invite sent to ${email}`;
+      document.getElementById('invite-email').value = '';
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
+      _loadTeam();
+    } catch (e) {
+      statusEl.textContent = `Error: ${e.message}`;
+    }
+  }
+
+  async function changeMemberRole(userId, role) {
+    try { await API.updateMember(userId, role); _loadTeam(); } catch (e) { alert(e.message); }
+  }
+
+  async function removeMember(userId) {
+    if (!confirm('Remove this member?')) return;
+    try { await API.removeMember(userId); _loadTeam(); } catch (e) { alert(e.message); }
   }
 
   async function save() {
@@ -142,6 +254,7 @@ const Settings = (() => {
 
     try {
       const s = await API.updateSettings(body);
+      _markClean();
       statusEl.textContent = 'Saved ✓';
       buildModelSelect(s);
       applyTheme(s.dark_mode);
@@ -160,5 +273,5 @@ const Settings = (() => {
 
   function isSafeMode() { return _current?.safe_mode ?? false; }
 
-  return { open, save, initModelSelect, applyTheme, isSafeMode, PROVIDERS };
+  return { open, load, showSection, save, initModelSelect, applyTheme, isSafeMode, isDirty, inviteMember, changeMemberRole, removeMember, deleteWorkspace, PROVIDERS };
 })();

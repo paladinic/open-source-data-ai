@@ -72,7 +72,7 @@ const Pipeline = (() => {
 
   function _filterSummary() {
     const on = Object.entries(_filters).filter(([, v]) => v).map(([k]) => k);
-    if (on.length === 3) return 'All types';
+    if (on.length === Object.keys(_filters).length) return 'All types';
     if (on.length === 0) return 'None';
     return on.map(k => k === 'visualisation' ? 'Viz' : k.charAt(0).toUpperCase() + k.slice(1)).join(', ');
   }

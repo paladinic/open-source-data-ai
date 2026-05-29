@@ -3,9 +3,9 @@
 Lite-mode launcher — no Docker, no Supabase, no auth.
 
 Usage:
-    python run.py              # starts on http://localhost:8000
-    python run.py --port 9000
-    python run.py --no-browser
+    python run_lite.py              # starts on http://localhost:8000
+    python run_lite.py --port 9000
+    python run_lite.py --no-browser
 """
 import argparse
 import os
@@ -14,8 +14,10 @@ import threading
 import webbrowser
 from pathlib import Path
 
-# Ensure the backend package is importable when run from the repo root
-sys.path.insert(0, str(Path(__file__).parent / "backend"))
+# Ensure both the backend package and the SDK (open_data_ai) are importable.
+_repo_root = Path(__file__).parent
+sys.path.insert(0, str(_repo_root / "backend"))
+sys.path.insert(0, str(_repo_root))  # needed for open_data_ai when not pip-installed
 
 
 def main():

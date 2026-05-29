@@ -14,8 +14,26 @@ const Workspace = (() => {
   const _globalOutputCache = {};
   let _monacoReady = false;
   let _autoSaveTimer = null;
-  let _commandCellId = null;   // id of cell currently in command mode
+  let _commandCellId = null;
   let _completionsRegistered = false;
+  const _applyingRemote = new Set();
+  const _remoteDecorations = {};
+  const _broadcastTimers = {};
+
+  function _debouncedBroadcast(cellId, editor) {
+    clearTimeout(_broadcastTimers[cellId]);
+    _broadcastTimers[cellId] = setTimeout(() => {
+      Collab.broadcastCellChange(cellId, editor.getValue());
+    }, 350);
+  }
+
+  function _throttle(fn, ms) {
+    let last = 0;
+    return (...args) => {
+      const now = Date.now();
+      if (now - last >= ms) { last = now; fn(...args); }
+    };
+  }
 
   // ── Public entry point ────────────────────────────────────────────────────
 
@@ -27,6 +45,7 @@ const Workspace = (() => {
     document.getElementById('view-workspace').classList.remove('d-none');
 
     document.getElementById('ws-component-name').textContent = component.name;
+    Collab.join(component.id, App.getUserEmail());
     document.getElementById('ws-component-type').textContent = component.type;
     document.getElementById('ws-component-type').className = `component-badge badge-${component.type}`;
     document.getElementById('ws-autosave-status').textContent = '';
@@ -158,7 +177,16 @@ const Workspace = (() => {
     editor.onDidChangeModelContent(() => {
       cell.source = editor.getValue();
       _scheduleAutoSave();
+      if (!_applyingRemote.has(cell.id)) {
+        _debouncedBroadcast(cell.id, editor);
+      }
     });
+
+    editor.onDidChangeCursorPosition(
+      _throttle(({ position }) => {
+        Collab.broadcastCursor(cell.id, position.lineNumber, position.column);
+      }, 80)
+    );
 
     // editor.onKeyDown fires inside Monaco's own event pipeline — before Monaco
     // dispatches any command. DOM capture listeners on container are unreliable
@@ -459,8 +487,11 @@ const Workspace = (() => {
     } else if (result.raw_output_type) {
       outputEl.innerHTML = html + `<span class="text-secondary small nb-output-type">${escapeHtml(result.raw_output_type)}</span>`;
     } else if (result.rows && result.rows.length) {
+      const csvBtn = `<button class="nb-csv-btn" onclick="Workspace.downloadCSV('${cellId}')">⬇ CSV</button>`;
       if (result.columns && result.columns.length) {
-        html += `<p class="small text-success mb-1">Columns: ${result.columns.map(escapeHtml).join(', ')}</p>`;
+        html += `<div class="nb-output-meta">${csvBtn}<span class="small text-success">Columns: ${result.columns.map(escapeHtml).join(', ')}</span></div>`;
+      } else {
+        html += `<div class="nb-output-meta">${csvBtn}</div>`;
       }
       html += _renderTable(result.rows, 10);
       outputEl.innerHTML = html;
@@ -549,27 +580,52 @@ const Workspace = (() => {
     input.click();
   }
 
-  function exportNotebook() {
-    const nb = {
-      nbformat: 4,
-      nbformat_minor: 5,
-      metadata: {
-        kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' },
-        language_info: { name: 'python' },
-      },
-      cells: _cells.map(cell => ({
-        cell_type: 'code',
-        id: cell.id,
-        metadata: {},
-        source: cell.source,
-        outputs: [],
-        execution_count: null,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
+  async function renamePrompt() {
+    if (!_component) return;
+    const newName = prompt('Rename component:', _component.name);
+    if (!newName || newName === _component.name) return;
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newName)) {
+      alert('Only letters, digits and underscores allowed. Must start with a letter or _.');
+      return;
+    }
+    const updated = await API.updateComponent(_projectId, _component.id, { name: newName });
+    _component = updated;
+    document.getElementById('ws-component-name').textContent = updated.name;
+    ComponentList.refresh();
+  }
+
+  async function exportNotebook() {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`/projects/${_projectId}/execute/${_component.id}/notebook`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) { alert('Export failed'); return; }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const filename = cd.match(/filename="([^"]+)"/)?.[1] || `${_component.name}_pipeline.ipynb`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${_component.name}.ipynb`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function downloadCSV(cellId) {
+    const result = _cellOutputs[cellId];
+    if (!result?.rows?.length) return;
+    const cols = result.columns?.length ? result.columns : Object.keys(result.rows[0]);
+    const lines = [
+      cols.join(','),
+      ...result.rows.map(r => cols.map(c => {
+        const s = String(r[c] ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(',')),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${_component?.name || 'export'}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -655,5 +711,70 @@ const Workspace = (() => {
 
   _initResize();
 
-  return { open, refreshEditor, save, run, runCell, addCell, deleteCell, moveCell, importNotebook, exportNotebook, renderTable };
+  // ── Collab: remote cell & cursor application ──────────────────────────────
+
+  function _ensureUserStyle(email, color) {
+    const id = `rcs-${email.replace(/[^a-z0-9]/gi, '_')}`;
+    if (document.getElementById(id)) return;
+    const label = email.split('@')[0].slice(0, 12).replace(/[<>"']/g, '');
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+      .rc-caret-${id} { border-left: 2px solid ${color}; margin-left: -1px; }
+      .rc-label-${id}::before {
+        content: "${label}";
+        background: ${color}; color: #fff;
+        font-size: 10px; font-style: normal;
+        padding: 0 4px; border-radius: 2px 2px 2px 0;
+        white-space: nowrap; pointer-events: none;
+        position: absolute; top: -16px; left: -1px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Called by Collab when a remote user edits a cell
+  function applyRemoteCellChange(cellId, content, _email) {
+    const editor = _editors[cellId];
+    if (!editor) return;
+    if (editor.getValue() === content) return;
+    _applyingRemote.add(cellId);
+    const model = editor.getModel();
+    model.pushEditOperations([], [{ range: model.getFullModelRange(), text: content }], () => null);
+    _applyingRemote.delete(cellId);
+    // Keep _cells in sync
+    const cell = _cells.find(c => c.id === cellId);
+    if (cell) cell.source = content;
+  }
+
+  // Called by Collab when a remote user moves their cursor
+  function applyRemoteCursor(cellId, line, col, email, color) {
+    const editor = _editors[cellId];
+    if (!editor || typeof monaco === 'undefined') return;
+    _ensureUserStyle(email, color);
+    const styleId = `rcs-${email.replace(/[^a-z0-9]/gi, '_')}`;
+    if (!_remoteDecorations[email]) _remoteDecorations[email] = {};
+    if (!_remoteDecorations[email][cellId]) {
+      _remoteDecorations[email][cellId] = editor.createDecorationsCollection([]);
+    }
+    _remoteDecorations[email][cellId].set([{
+      range: new monaco.Range(line, col, line, col),
+      options: {
+        className: `rc-caret-${styleId}`,
+        beforeContentClassName: `rc-label-${styleId}`,
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        zIndex: 10,
+      }
+    }]);
+  }
+
+  // Called by Collab when a user leaves the channel
+  function clearRemoteCursors(email) {
+    const byCell = _remoteDecorations[email];
+    if (!byCell) return;
+    Object.values(byCell).forEach(coll => coll.clear());
+    delete _remoteDecorations[email];
+  }
+
+  return { open, refreshEditor, save, run, runCell, addCell, deleteCell, moveCell, renamePrompt, importNotebook, exportNotebook, downloadCSV, renderTable, applyRemoteCellChange, applyRemoteCursor, clearRemoteCursors };
 })();

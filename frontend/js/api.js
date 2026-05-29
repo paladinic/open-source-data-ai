@@ -32,11 +32,19 @@ const API = (() => {
     authConfig:      ()                           => request('GET',    'api/auth/config'),
     me:              ()                           => request('GET',    'api/auth/me'),
     logout:          ()                           => request('POST',   'api/auth/logout'),
-    createUser:      (email, password, role)      => request('POST',   'api/auth/users', { email, password, role }),
+
+    // Workspace
+    getWorkspaces:   ()                           => request('GET',    'api/workspaces/'),
+    getMyWorkspace:  (wsId)                       => request('GET',    `api/workspaces/mine${wsId ? '?workspace_id=' + wsId : ''}`),
+    createWorkspace: (name)                       => request('POST',   'api/workspaces/', { name }),
+    inviteMember:    (email, role, wsId)          => request('POST',   'api/workspaces/invite', { email, role, workspace_id: wsId }),
+    updateMember:    (userId, role)               => request('PATCH',  `api/workspaces/members/${userId}`, { role }),
+    removeMember:    (userId)                     => request('DELETE', `api/workspaces/members/${userId}`),
+    deleteWorkspace: (wsId)                       => request('DELETE', `api/workspaces/${wsId}`),
 
     // Projects
-    getProjects:     ()                           => request('GET',    'projects/'),
-    createProject:   (name, desc)                 => request('POST',   'projects/', { name, description: desc }),
+    getProjects:     (wsId)                       => request('GET',    `projects/${wsId ? '?workspace_id=' + wsId : ''}`),
+    createProject:   (name, desc, wsId)           => request('POST',   `projects/${wsId ? '?workspace_id=' + wsId : ''}`, { name, description: desc }),
     deleteProject:   (id)                         => request('DELETE', `projects/${id}`),
 
     // Components
@@ -52,6 +60,7 @@ const API = (() => {
     getJobStatus:    (pid, cid, jobId)            => request('GET',    `projects/${pid}/components/${cid}/chat/jobs/${jobId}`),
 
     // Execute
+    runAll:          (pid)                         => request('POST',   `projects/${pid}/execute/run_all`),
     execute:         (pid, cid, inputs)           => request('POST',   `projects/${pid}/execute/${cid}`, { inputs: inputs || {} }),
     executeCell:     (pid, cid, cellIndex)        => request('POST',   `projects/${pid}/execute/${cid}/cell`, { cell_index: cellIndex, inputs: {} }),
     inspectColumns:  (pid, cid)                   => request('POST',   `projects/${pid}/execute/${cid}/columns`),

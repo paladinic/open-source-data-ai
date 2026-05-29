@@ -97,7 +97,7 @@ const ComponentList = (() => {
   function selectType(type) {
     document.getElementById('new-component-type').value = type;
     document.getElementById('wizard-type-label').textContent = type;
-    const titles = { etl: 'New ETL component', model: 'New Model component', visualisation: 'New Visualisation' };
+    const titles = { etl: 'New ETL component', model: 'New Model component', visualisation: 'New Visualisation', code: 'New Code component' };
     document.getElementById('create-modal-title').textContent = titles[type] || 'New component';
     document.getElementById('wizard-step-1').classList.add('d-none');
     document.getElementById('wizard-step-2').classList.remove('d-none');
@@ -134,6 +134,26 @@ const ComponentList = (() => {
     App.openComponent(c.id);
   }
 
+  async function runAll() {
+    const btn = document.getElementById('btn-run-all');
+    if (btn) { btn.disabled = true; btn.textContent = '↻ Running…'; }
+    try {
+      const { results } = await API.runAll(_projectId);
+      // Update cached component statuses from results
+      results.forEach(r => {
+        const idx = _allComponents.findIndex(c => c.id === r.id);
+        if (idx !== -1) _allComponents[idx].last_run_ok = r.success;
+      });
+      applyFilters();
+      const failed = results.filter(r => !r.success).length;
+      const msg = failed ? `${results.length - failed}/${results.length} succeeded` : `All ${results.length} components ran successfully`;
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; btn.title = msg; }
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; }
+      console.error('run_all failed', e);
+    }
+  }
+
   async function deleteComponent(componentId) {
     const dependents = _allComponents.filter(c => c.depends_on?.includes(componentId));
     let msg = 'Delete this component?';
@@ -146,5 +166,5 @@ const ComponentList = (() => {
     refresh();
   }
 
-  return { show, renderList, refresh, applyFilters, refreshCard, showCreateModal, selectType, backToTypeStep, createComponent, deleteComponent };
+  return { show, renderList, refresh, applyFilters, refreshCard, showCreateModal, selectType, backToTypeStep, createComponent, deleteComponent, runAll };
 })();

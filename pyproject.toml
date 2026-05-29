@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-data-ai"
+version = "0.1.0"
+description = "Headless Python SDK for building component-based data pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["data", "pipeline", "etl", "ai", "llm"]
+
+# Core deps — always installed
+dependencies = [
+    "pydantic>=2.7.0",
+    "aiosqlite>=0.20.0",
+]
+
+[project.optional-dependencies]
+# Data science libraries used by generated component code
+data = [
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    "requests>=2.31.0",
+    "matplotlib>=3.8.0",
+]
+
+# LLM providers for .chat() and AI code generation
+ai = [
+    "anthropic>=0.28.0",
+    "openai>=1.30.0",
+    "google-genai>=1.0.0",
+    "httpx>=0.27.0",
+]
+
+# Web application (FastAPI + Supabase)
+web = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "pydantic-settings>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "supabase>=2.4.0",
+    "PyJWT>=2.8.0",
+]
+
+# Everything
+full = [
+    "open-data-ai[data,ai,web]",
+]
+
+# Convenience bundle for local/lite usage
+lite = [
+    "open-data-ai[data,ai]",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "pydantic-settings>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "PyJWT>=2.8.0",
+]
+
+[project.scripts]
+open-data-ai = "open_data_ai.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["open_data_ai*"]

@@ -100,6 +100,7 @@ const Dashboard = (() => {
 
   async function _openById(dashboardId) {
     _dashboard = await API.getDashboard(_projectId, dashboardId);
+    _dashboard.widgets = _dashboard.widgets || [];
     _filterValues = {};
     _selectedIds.clear();
     document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
@@ -690,6 +691,259 @@ const Dashboard = (() => {
     App.showProjectHome();
   }
 
+  // ── Widgets (text boxes & shapes) ─────────────────────────────────────────
+
+  function addWidget(type) {
+    const widget = {
+      id: crypto.randomUUID(),
+      type,
+      xPct: 5, y: GAP, wPct: 25, h: type === 'text' ? 80 : 150,
+    };
+    if (type === 'text') {
+      Object.assign(widget, { content: 'Text', fontSize: 18, fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left', color: '#ffffff', bg: '' });
+    } else {
+      Object.assign(widget, { shapeType: 'rect', fill: '', stroke: '#aaaaaa', strokeWidth: 2 });
+    }
+    _dashboard.widgets = [...(_dashboard.widgets || []), widget];
+    _persistWidgets();
+    _renderWidgetEl(widget);
+    _updateGridSize();
+  }
+
+  function _renderWidgets() {
+    (_dashboard.widgets || []).forEach(w => _renderWidgetEl(w));
+  }
+
+  function _renderWidgetEl(widget) {
+    document.getElementById(`dash-widget-${widget.id}`)?.remove();
+    const el = document.createElement('div');
+    el.className = 'dash-card dash-widget';
+    el.id = `dash-widget-${widget.id}`;
+    el.style.cssText = `left:${widget.xPct}%;top:${widget.y}px;width:${widget.wPct}%;height:${widget.h}px`;
+    el.innerHTML = `
+      <div class="dash-widget-body">${_widgetBodyHtml(widget)}</div>
+      <div class="dash-widget-toolbar">
+        <span class="dash-drag-handle" style="cursor:grab;padding:0 4px;color:#adb5bd">⠿</span>
+        <button class="dash-card-action ms-auto" onclick="Dashboard._editWidget('${widget.id}')">✎</button>
+        <button class="dash-card-action" onclick="Dashboard._removeWidget('${widget.id}')">✕</button>
+      </div>`;
+    document.getElementById('dashboard-grid').appendChild(el);
+    _initWidgetInteract(widget.id);
+  }
+
+  function _widgetBodyHtml(widget) {
+    if (widget.type === 'text') {
+      return `<div class="dash-widget-text" style="font-size:${widget.fontSize || 18}px;font-weight:${widget.fontWeight || 'normal'};font-style:${widget.fontStyle || 'normal'};text-align:${widget.textAlign || 'left'};color:${widget.color || '#ffffff'};background:${widget.bg || 'transparent'}">${escapeHtml(widget.content || '')}</div>`;
+    }
+    const fill = widget.fill || 'none';
+    const stroke = widget.stroke || '#aaaaaa';
+    const sw = widget.strokeWidth ?? 2;
+    let svgContent;
+    if (widget.shapeType === 'circle') {
+      svgContent = `<ellipse cx="50%" cy="50%" rx="49%" ry="49%" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (widget.shapeType === 'line') {
+      svgContent = `<line x1="2" y1="50%" x2="99%" y2="50%" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`;
+    } else {
+      const h = sw / 2;
+      svgContent = `<rect x="${h}" y="${h}" width="99%" height="99%" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    }
+    return `<svg class="dash-widget-shape" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none">${svgContent}</svg>`;
+  }
+
+  function _initWidgetInteract(widgetId) {
+    interact(`#dash-widget-${widgetId}`)
+      .draggable({
+        allowFrom: '.dash-drag-handle',
+        modifiers: [
+          interact.modifiers.snap({ targets: [interact.snappers.grid({ x: SNAP, y: SNAP })], range: Infinity, relativePoints: [{ x: 0, y: 0 }] }),
+          interact.modifiers.restrict({ restriction: 'parent', elementRect: { top: 0, left: 0, bottom: 1, right: 1 } }),
+        ],
+        listeners: {
+          start(e) { _wasDragging = true; e.target.classList.add('dragging'); },
+          move(e) {
+            const gw = _gridW();
+            e.target.style.left = Math.max(0, (parseFloat(e.target.style.left) || 0) + e.dx / gw * 100) + '%';
+            e.target.style.top  = Math.max(0, (parseFloat(e.target.style.top)  || 0) + e.dy) + 'px';
+          },
+          end(e) {
+            e.target.classList.remove('dragging');
+            _saveWidgetPos(widgetId);
+            _updateGridSize();
+            setTimeout(() => { _wasDragging = false; }, 50);
+          },
+        },
+      })
+      .resizable({
+        edges: { left: true, right: true, bottom: true },
+        modifiers: [
+          interact.modifiers.restrictSize({ min: { width: 60, height: 40 } }),
+          interact.modifiers.snapSize({ targets: [interact.snappers.grid({ width: SNAP, height: SNAP })] }),
+        ],
+        listeners: {
+          start(e) { e.target.classList.add('resizing'); },
+          move(e) {
+            const gw = _gridW();
+            e.target.style.left   = Math.max(0, (parseFloat(e.target.style.left) || 0) + e.deltaRect.left / gw * 100) + '%';
+            e.target.style.top    = Math.max(0, (parseFloat(e.target.style.top)  || 0) + e.deltaRect.top) + 'px';
+            e.target.style.width  = (e.rect.width / gw * 100) + '%';
+            e.target.style.height = e.rect.height + 'px';
+          },
+          end(e) {
+            e.target.classList.remove('resizing');
+            _saveWidgetPos(widgetId);
+            _updateGridSize();
+          },
+        },
+      });
+  }
+
+  function _saveWidgetPos(widgetId) {
+    const el = document.getElementById(`dash-widget-${widgetId}`);
+    if (!el) return;
+    const gw = _gridW();
+    const snap = v => Math.round(v / SNAP) * SNAP;
+    const xPx = snap(parseFloat(el.style.left) * gw / 100);
+    const wPx = snap(parseFloat(el.style.width) * gw / 100);
+    const widget = (_dashboard.widgets || []).find(w => w.id === widgetId);
+    if (!widget) return;
+    widget.xPct = Math.max(0, xPx) / gw * 100;
+    widget.y    = Math.max(0, snap(parseFloat(el.style.top) || 0));
+    widget.wPct = Math.max(60, wPx) / gw * 100;
+    widget.h    = Math.max(40, snap(parseFloat(el.style.height) || 60));
+    _persistWidgets();
+  }
+
+  function _editWidget(widgetId) {
+    const widget = (_dashboard.widgets || []).find(w => w.id === widgetId);
+    if (!widget) return;
+    document.getElementById('dash-widget-editor')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'dash-widget-editor';
+    overlay.className = 'dash-picker-overlay';
+
+    if (widget.type === 'text') {
+      overlay.innerHTML = `
+        <div class="dash-picker-box" style="width:340px">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <strong>Edit text</strong>
+            <button class="btn-close" onclick="document.getElementById('dash-widget-editor').remove()"></button>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Content</label>
+            <textarea id="dwe-content" class="form-control form-control-sm" rows="3">${escapeHtml(widget.content || '')}</textarea>
+          </div>
+          <div class="mb-3 d-flex gap-3 align-items-start flex-wrap">
+            <div>
+              <label class="form-label small fw-semibold d-block">Size (px)</label>
+              <input type="number" id="dwe-size" class="form-control form-control-sm" value="${widget.fontSize || 18}" style="width:72px" min="8" max="120" />
+            </div>
+            <div>
+              <label class="form-label small fw-semibold d-block">Style</label>
+              <div class="d-flex gap-1">
+                <button id="dwe-bold" class="btn btn-sm btn-outline-secondary${widget.fontWeight === 'bold' ? ' active' : ''}" onclick="this.classList.toggle('active')"><b>B</b></button>
+                <button id="dwe-italic" class="btn btn-sm btn-outline-secondary${widget.fontStyle === 'italic' ? ' active' : ''}" onclick="this.classList.toggle('active')"><i>I</i></button>
+              </div>
+            </div>
+            <div>
+              <label class="form-label small fw-semibold d-block">Align</label>
+              <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary dwe-align-btn${(widget.textAlign || 'left') === 'left' ? ' active' : ''}" data-val="left" onclick="document.querySelectorAll('.dwe-align-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">←</button>
+                <button class="btn btn-sm btn-outline-secondary dwe-align-btn${widget.textAlign === 'center' ? ' active' : ''}" data-val="center" onclick="document.querySelectorAll('.dwe-align-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">≡</button>
+                <button class="btn btn-sm btn-outline-secondary dwe-align-btn${widget.textAlign === 'right' ? ' active' : ''}" data-val="right" onclick="document.querySelectorAll('.dwe-align-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">→</button>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3 d-flex gap-3 align-items-center">
+            <div>
+              <label class="form-label small fw-semibold d-block">Color</label>
+              <input type="color" id="dwe-color" class="form-control form-control-color form-control-sm" value="${widget.color || '#ffffff'}" style="width:48px" />
+            </div>
+            <div>
+              <label class="form-label small fw-semibold d-block">
+                <input type="checkbox" id="dwe-bg-check"${widget.bg ? ' checked' : ''} /> Background
+              </label>
+              <input type="color" id="dwe-bg" class="form-control form-control-color form-control-sm" value="${widget.bg || '#000000'}" style="width:48px" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm w-100" onclick="Dashboard._saveTextWidget('${widget.id}')">Save</button>
+        </div>`;
+    } else {
+      overlay.innerHTML = `
+        <div class="dash-picker-box" style="width:320px">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <strong>Edit shape</strong>
+            <button class="btn-close" onclick="document.getElementById('dash-widget-editor').remove()"></button>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold d-block">Shape</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary dwe-shape-btn${(!widget.shapeType || widget.shapeType === 'rect') ? ' active' : ''}" data-val="rect" onclick="document.querySelectorAll('.dwe-shape-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">▭ Rect</button>
+              <button class="btn btn-sm btn-outline-secondary dwe-shape-btn${widget.shapeType === 'circle' ? ' active' : ''}" data-val="circle" onclick="document.querySelectorAll('.dwe-shape-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">○ Circle</button>
+              <button class="btn btn-sm btn-outline-secondary dwe-shape-btn${widget.shapeType === 'line' ? ' active' : ''}" data-val="line" onclick="document.querySelectorAll('.dwe-shape-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">— Line</button>
+            </div>
+          </div>
+          <div class="mb-3 d-flex gap-3 align-items-start flex-wrap">
+            <div>
+              <label class="form-label small fw-semibold d-block">
+                <input type="checkbox" id="dwe-fill-check"${widget.fill ? ' checked' : ''} /> Fill
+              </label>
+              <input type="color" id="dwe-fill" class="form-control form-control-color form-control-sm" value="${widget.fill || '#4a6fa5'}" style="width:48px" />
+            </div>
+            <div>
+              <label class="form-label small fw-semibold d-block">Border color</label>
+              <input type="color" id="dwe-stroke" class="form-control form-control-color form-control-sm" value="${widget.stroke || '#aaaaaa'}" style="width:48px" />
+            </div>
+            <div>
+              <label class="form-label small fw-semibold d-block">Thickness (px)</label>
+              <input type="number" id="dwe-stroke-width" class="form-control form-control-sm" value="${widget.strokeWidth ?? 2}" min="0" max="30" style="width:72px" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm w-100" onclick="Dashboard._saveShapeWidget('${widget.id}')">Save</button>
+        </div>`;
+    }
+    document.body.appendChild(overlay);
+  }
+
+  async function _saveTextWidget(widgetId) {
+    const widget = (_dashboard.widgets || []).find(w => w.id === widgetId);
+    if (!widget) return;
+    widget.content    = document.getElementById('dwe-content').value;
+    widget.fontSize   = parseInt(document.getElementById('dwe-size').value) || 18;
+    widget.fontWeight = document.getElementById('dwe-bold').classList.contains('active') ? 'bold' : 'normal';
+    widget.fontStyle  = document.getElementById('dwe-italic').classList.contains('active') ? 'italic' : 'normal';
+    widget.textAlign  = document.querySelector('.dwe-align-btn.active')?.dataset.val || 'left';
+    widget.color      = document.getElementById('dwe-color').value;
+    widget.bg         = document.getElementById('dwe-bg-check').checked ? document.getElementById('dwe-bg').value : '';
+    document.getElementById('dash-widget-editor')?.remove();
+    const bodyEl = document.querySelector(`#dash-widget-${widgetId} .dash-widget-body`);
+    if (bodyEl) bodyEl.innerHTML = _widgetBodyHtml(widget);
+    await _persistWidgets();
+  }
+
+  async function _saveShapeWidget(widgetId) {
+    const widget = (_dashboard.widgets || []).find(w => w.id === widgetId);
+    if (!widget) return;
+    widget.shapeType   = document.querySelector('.dwe-shape-btn.active')?.dataset.val || 'rect';
+    widget.fill        = document.getElementById('dwe-fill-check').checked ? document.getElementById('dwe-fill').value : '';
+    widget.stroke      = document.getElementById('dwe-stroke').value;
+    widget.strokeWidth = parseInt(document.getElementById('dwe-stroke-width').value) ?? 2;
+    document.getElementById('dash-widget-editor')?.remove();
+    const bodyEl = document.querySelector(`#dash-widget-${widgetId} .dash-widget-body`);
+    if (bodyEl) bodyEl.innerHTML = _widgetBodyHtml(widget);
+    await _persistWidgets();
+  }
+
+  async function _removeWidget(widgetId) {
+    _dashboard.widgets = (_dashboard.widgets || []).filter(w => w.id !== widgetId);
+    document.getElementById(`dash-widget-${widgetId}`)?.remove();
+    _updateGridSize();
+    await _persistWidgets();
+  }
+
+  async function _persistWidgets() {
+    _dashboard = await API.updateDashboard(_projectId, _dashboard.id, { widgets: _dashboard.widgets });
+  }
+
   // ── Render canvas ─────────────────────────────────────────────────────────
 
   // ResizeObserver - resizes chart instances when the container grows/shrinks
@@ -712,6 +966,8 @@ const Dashboard = (() => {
 
     if (!_dashboard.layout.length) {
       grid.innerHTML = '<p class="text-secondary p-3">No charts yet. Click "+ Add chart" to get started.</p>';
+      _renderWidgets();
+      _updateGridSize();
       return;
     }
 
@@ -743,6 +999,7 @@ const Dashboard = (() => {
     }).join('');
 
     _dashboard.layout.forEach(id => _initInteract(id));
+    _renderWidgets();
     _updateGridSize();
     _resizeObserver.observe(grid);
 
@@ -1045,9 +1302,10 @@ const Dashboard = (() => {
     let maxBottom = 400;
     _dashboard.layout.forEach((id, i) => {
       const p = (_dashboard.positions || {})[id] || _pos(id, i);
-      const y = p.y ?? 0;
-      const h = p.h ?? DEFAULT_H;
-      maxBottom = Math.max(maxBottom, y + h + GAP);
+      maxBottom = Math.max(maxBottom, (p.y ?? 0) + (p.h ?? DEFAULT_H) + GAP);
+    });
+    (_dashboard.widgets || []).forEach(w => {
+      maxBottom = Math.max(maxBottom, w.y + w.h + GAP);
     });
     grid.style.minHeight = maxBottom + 'px';
   }
@@ -1088,10 +1346,12 @@ const Dashboard = (() => {
     showList, renderList, showCreateModal,
     addChart, showAddFilterModal, renamePrompt, deleteCurrentDashboard,
     present, exitPresent,
+    addWidget,
     _openById, _pickComponent, _removeChart, _newChartFromPicker,
     _cardClick,
     _filterChanged, _filterRangeChanged, _dualRangeInput, _dualRangeCommit,
     _filterTypeSelected, _filterCheckChanged, _saveFilter, _removeFilter,
     _showEditFilter, _saveEditFilter, _runSingleChart,
+    _editWidget, _saveTextWidget, _saveShapeWidget, _removeWidget,
   };
 })();

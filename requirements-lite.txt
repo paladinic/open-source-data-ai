@@ -8,6 +8,7 @@ pydantic>=2.7.0
 pydantic-settings>=2.2.0
 python-dotenv>=1.0.0
 aiosqlite>=0.20.0
+PyJWT>=2.8.0
 
 # LLM providers (install whichever you use)
 anthropic>=0.28.0
@@ -22,3 +23,4 @@ scikit-learn>=1.4.0
 requests>=2.31.0
 matplotlib>=3.8.0
 pytrends>=4.9.0
+yfinance>=0.2.0

@@ -236,6 +236,43 @@ body {
   color: #495057;
 }
 
+/* ── Settings page view ─────────────────────────────────────── */
+
+.settings-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+.settings-sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.settings-nav-item:hover { background: var(--bg); }
+.settings-nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  max-width: 640px;
+}
+
 /* ── Settings modal ─────────────────────────────────────────── */
 
 .settings-section-title {
@@ -315,6 +352,7 @@ body {
 .badge-visualisation { background: #fef3c7; color: #92400e; }
 .badge-model         { background: #dbeafe; color: #1e40af; }
 .badge-dashboard     { background: #d1fae5; color: #065f46; }
+.badge-code          { background: #fce7f3; color: #9d174d; }
 
 pre { white-space: pre-wrap; }
 
@@ -350,6 +388,47 @@ pre { white-space: pre-wrap; }
 .dash-card.dragging { opacity: 0.5; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
 .dash-card.resizing { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 .dash-card-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Widgets (text boxes & shapes) */
+.dash-widget {
+  background: transparent;
+  border: 1px dashed transparent;
+}
+.dash-widget:hover {
+  border-color: rgba(255,255,255,0.2);
+}
+.dash-widget-body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.dash-widget-text {
+  width: 100%;
+  height: 100%;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.dash-widget-shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dash-widget-toolbar {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 5px;
+  padding: 2px 4px;
+  z-index: 10;
+}
+.dash-widget:hover .dash-widget-toolbar { display: flex; }
 
 /* Alignment guides */
 .dash-guide-v {
@@ -736,6 +815,7 @@ pre { white-space: pre-wrap; }
 [data-theme="dark"] .pipeline-toolbar   { background: #1e1e1e; border-color: #3e3e42 !important; }
 [data-theme="dark"] .badge-dashboard    { background: #064e3b; color: #6ee7b7; }
 [data-theme="dark"] .badge-model        { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-code         { background: #4a1942; color: #f9a8d4; }
 
 /* ── Component type cards (wizard step 1) ───────────────────── */
 
@@ -918,6 +998,25 @@ pre { white-space: pre-wrap; }
   font-size: 0.78rem;
 }
 
+.nb-output-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.nb-csv-btn {
+  font-size: 0.72rem;
+  padding: 0.1em 0.5em;
+  border: 1px solid #495057;
+  border-radius: 4px;
+  background: transparent;
+  color: #adb5bd;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nb-csv-btn:hover { border-color: #6c757d; color: #dee2e6; }
+
 .nb-output-type {
   font-size: 0.72rem;
 }
@@ -999,6 +1098,36 @@ pre { white-space: pre-wrap; }
 }
 
 /* ── Jobs running badge (navbar) ─────────────────────────── */
+
+/* ── Collab presence ─────────────────────────────────────────── */
+
+.collab-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  border: 2px solid var(--surface, #fff);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.nav-lite-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #6ea8fe;
+  border: 1px solid #1d4ed8;
+  border-radius: 999px;
+  padding: 0.1em 0.55em;
+  white-space: nowrap;
+  opacity: 0.8;
+}
 
 .jobs-badge {
   display: inline-flex;

@@ -62,7 +62,7 @@ You only need one key. The app will use whatever you provide.
 ## 5. Run
 
 ```bash
-python run.py
+python run_lite.py
 ```
 
 The app opens automatically in your browser at `http://localhost:8000`.
@@ -76,8 +76,8 @@ Press `Ctrl+C` in the terminal to stop the server.
 ## Options
 
 ```bash
-python run.py --port 9000       # use a different port
-python run.py --no-browser      # don't open a browser tab automatically
+python run_lite.py --port 9000       # use a different port
+python run_lite.py --no-browser      # don't open a browser tab automatically
 ```
 
 ---
@@ -87,7 +87,7 @@ python run.py --no-browser      # don't open a browser tab automatically
 ```bash
 git pull
 pip install -r requirements-lite.txt   # pick up any new dependencies
-python run.py
+python run_lite.py
 ```
 
 Your `data.db` is not touched by updates.
