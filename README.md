@@ -3,6 +3,40 @@
 An API & MCP that allows users to build data apps with natural language.
 Users build components that make up the infrastructure of their data project.
 
+## Installation
+
+
+1. Clone
+```bash
+git clone https://github.com/paladinic/open-source-data-ai.git
+```
+
+2. Create `venv`
+```bash
+# Create the virtual environment
+python -m venv venv
+
+# Activate on Windows (Command Prompt)
+venv\Scripts\activate
+
+# OR Activate on Windows (PowerShell)
+. \venv\Scripts\Activate.ps1
+
+# OR Activate on macOS/Linux
+source venv/bin/activate
+
+```
+
+3. Install `requirements-lite.txt`
+```bash
+pip install -r requirements-lite.txt
+```
+
+4. Run
+```bash
+python run_lite.py
+```
+
 ## User Journey
 
 1. Start Project (e.g. company marketing analytics dashboard)
