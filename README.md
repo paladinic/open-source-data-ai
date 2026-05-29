@@ -4,7 +4,7 @@ An API & MCP that allows users to build data apps with natural language.
 Users build components that make up the infrastructure of their data project.
 
 ## Installation
-
+The steps below set you up to run the _lite_ version of BI-Studio, and give you everything you need to upgrade to the full version.
 
 1. Clone
 ```bash
@@ -47,60 +47,10 @@ python run_lite.py
 
 ## Components
 
-Users can use the chat based interface to build and edit components, that are stored for later use. These can be combined and nested, like functions.
+Users can use the chat based interface to create and edit components, that are stored for later use. These can be combined and nested to build pipelines and dashboards that are robust, auditable, and completely modular.
 
 The types of components are:
-- Data connectors
-- Pipelines
-- Visualisation
-
-Under the hood components are just pieces of code. 
-
-### Data connectors
-
-#### Example 1
-
-USER:
-- "set up a connection to Bigquery table X"
-AI:
-- "cool, i need xyz to grant you access"
-USER:
-- provides credentials
-AI:
-- "cool, with these credentials we can start accessing data. I have stored the connector component for later use."
-
-### Pipelines
-
-#### Example 1 
-
-USER:
-- "i want to retrieve data from BQ to show sales revenue and marketing spend over time"
-AI:
-- "cool, I will use the BQ connector. I have stored the pipeline component which retrieves the requested data."
-
-#### Example 2
-
-USER:
-- "i want to run a regression model on sales revenue and marketing spend"
-AI:
-- "cool, shall i use the table from this component?"
-- shows table output head
-USER:
-- "yes"
-AI:
-- "I will use the pipeline component to retrieve the data and run the model. I have stored the pipeline component which runs the requested model and outputs the model object."
-
-### Visualisation
-
-#### Example 1 
-
-USER:
-- "i want to visualise revenue and marketing spend over time"
-AI:
-- "cool, I will use the pipeline component to retrieve the data. I have stored the visualisation component which displays the requested chart."
-
-## Tech Stack
-
-- Python backend (for routing and pipeline code)
-- JS frontend (vanilla + bootstrap + chart.js for visualisations)
-- Local storage (temporary for dev)
+- **ETL**: Accessing and processing data.
+- **Modelling**: Running ML models with data from ETL components.
+- **Visualisation**: Building visualisations that can be combined later into a dashboard.
+- **Code**: Functions to be used in various components to avoid repetition.
