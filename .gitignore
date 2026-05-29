@@ -15,6 +15,7 @@ build/
 
 # Data / local storage
 data/
+data.db
 
 # OS
 .DS_Store
