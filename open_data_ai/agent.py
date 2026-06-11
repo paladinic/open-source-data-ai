@@ -3,12 +3,14 @@ Central AI agent. All LLM calls route through here.
 Input:  list of chat messages + system context string
 Output: AgentResponse (reply text + optional Component)
 """
+
 from __future__ import annotations
+
 import json
 import re
 from typing import Any
 
-from open_data_ai.models import AgentResponse, Component, ChatMessage
+from open_data_ai.models import AgentResponse, ChatMessage, Component
 
 
 def _parse_response(raw: str, project_id: str) -> AgentResponse:
@@ -21,19 +23,19 @@ def _parse_response(raw: str, project_id: str) -> AgentResponse:
 
     candidates.append(text)
 
-    fence = re.search(r'```(?:json)?\s*([\s\S]+?)\s*```', text)
+    fence = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", text)
     if fence:
         candidates.append(fence.group(1).strip())
 
-    start = text.find('{')
-    end = text.rfind('}')
+    start = text.find("{")
+    end = text.rfind("}")
     if start != -1 and end > start:
-        candidates.append(text[start:end + 1])
+        candidates.append(text[start : end + 1])
 
     for candidate in candidates:
         try:
             data = json.loads(candidate)
-            if isinstance(data, dict) and 'reply' in data:
+            if isinstance(data, dict) and "reply" in data:
                 return _build_agent_response(data, project_id)
         except json.JSONDecodeError:
             continue

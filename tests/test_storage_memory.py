@@ -1,6 +1,15 @@
 """Tests for open_data_ai.storage.memory.MemoryStore — in-memory CRUD."""
+
 import pytest
-from open_data_ai.models import Component, ComponentType, Project, Dashboard, ChatMessage, UserSettings
+
+from open_data_ai.models import (
+    ChatMessage,
+    Component,
+    ComponentType,
+    Dashboard,
+    Project,
+    UserSettings,
+)
 from open_data_ai.storage.memory import MemoryStore
 
 
@@ -20,6 +29,7 @@ def component(project):
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_save_and_get_project(store, project):
@@ -65,6 +75,7 @@ async def test_delete_missing_project_returns_false(store):
 
 # ── Components ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_save_and_get_component(store, component):
     await store.save_component(component)
@@ -98,6 +109,7 @@ async def test_delete_missing_component_returns_false(store):
 
 # ── Dashboards ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_save_and_get_dashboard(store, project):
     d = Dashboard(project_id=project.id, name="Main")
@@ -116,6 +128,7 @@ async def test_delete_dashboard(store, project):
 
 
 # ── Messages ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_save_and_list_messages(store, project, component):
@@ -140,6 +153,7 @@ async def test_filter_messages_by_component(store, project):
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_settings_defaults(store):

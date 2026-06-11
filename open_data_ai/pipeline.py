@@ -20,6 +20,7 @@ Example
     result = pipeline.run("monthly_revenue")
     print(result)   # list-of-dicts
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,10 +28,10 @@ import inspect
 import textwrap
 from typing import Any, Callable
 
-from open_data_ai.models import Component, ComponentType, Project
+from open_data_ai.executor import ExecutionResult, invalidate_cache, run_component
+from open_data_ai.models import Component, ComponentType
 from open_data_ai.storage.base import BaseStore
 from open_data_ai.storage.memory import MemoryStore
-from open_data_ai.executor import run_component, invalidate_cache, ExecutionResult
 
 # Sentinel project ID used by the Pipeline when no explicit project is given.
 _DEFAULT_PROJECT_ID = "pipeline-default"
@@ -96,6 +97,7 @@ class Pipeline:
         name:
             Component name. Defaults to the function name.
         """
+
         def decorator(fn: Callable) -> Callable:
             comp_name = name or fn.__name__
             dep_ids = self._resolve_dep_ids(depends_on or [])
@@ -259,7 +261,11 @@ class Pipeline:
         system_context = build_context(comp, all_components)
 
         history = _run_sync(self._store.get_messages(self._project_id, comp.id))
-        history.append(ChatMessage(project_id=self._project_id, component_id=comp.id, role="user", content=message))
+        history.append(
+            ChatMessage(
+                project_id=self._project_id, component_id=comp.id, role="user", content=message
+            )
+        )
 
         eff_provider = provider or self._llm_provider
         eff_model = model or self._llm_model
@@ -296,11 +302,13 @@ class Pipeline:
 
         # Apply component update if the AI produced one
         if response.component:
-            updated = response.component.model_copy(update={
-                "id": comp.id,
-                "project_id": self._project_id,
-                "name": component_name,
-            })
+            updated = response.component.model_copy(
+                update={
+                    "id": comp.id,
+                    "project_id": self._project_id,
+                    "name": component_name,
+                }
+            )
             _run_sync(self._store.save_component(updated))
             invalidate_cache(comp.id)
 
@@ -323,6 +331,7 @@ class Pipeline:
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
+
 
 def _extract_source(fn: Callable, is_code: bool = False) -> str:
     """
@@ -359,9 +368,10 @@ def _extract_source(fn: Callable, is_code: bool = False) -> str:
 def _run_sync(coro) -> Any:
     """Run an async coroutine from synchronous code."""
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         # Already inside an event loop (e.g. Jupyter) — use a thread
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(asyncio.run, coro)
             return future.result()

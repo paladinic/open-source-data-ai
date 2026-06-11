@@ -2,8 +2,8 @@
 Tests for open_data_ai.agent — response parsing and message formatting.
 No actual LLM calls are made.
 """
-import pytest
-from open_data_ai.agent import _parse_response, _messages_for_llm
+
+from open_data_ai.agent import _messages_for_llm, _parse_response
 from open_data_ai.models import AgentResponse, ChatMessage, ComponentType
 
 PROJECT_ID = "proj-test"

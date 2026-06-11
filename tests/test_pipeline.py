@@ -1,13 +1,15 @@
 """
 Tests for open_data_ai.pipeline.Pipeline — decorator API, run(), and programmatic usage.
 """
+
 import pytest
-from open_data_ai.pipeline import Pipeline
+
 from open_data_ai.models import Component, ComponentType
+from open_data_ai.pipeline import Pipeline
 from open_data_ai.storage.memory import MemoryStore
 
-
 # ── Basic decorator usage ─────────────────────────────────────────────────────
+
 
 def test_component_decorator_registers():
     pipeline = Pipeline()
@@ -54,6 +56,7 @@ def test_run_returns_raw_for_model():
 
 # ── Dependency chaining ───────────────────────────────────────────────────────
 
+
 def test_depends_on_passes_output():
     pipeline = Pipeline()
 
@@ -90,6 +93,7 @@ def test_three_level_chain():
 
 # ── Error handling ────────────────────────────────────────────────────────────
 
+
 def test_run_raises_on_missing_component():
     pipeline = Pipeline()
     with pytest.raises(ValueError, match="not found"):
@@ -109,6 +113,7 @@ def test_run_raises_on_execution_failure():
 
 # ── run_result: full ExecutionResult ─────────────────────────────────────────
 
+
 def test_run_result_returns_execution_result():
     pipeline = Pipeline()
 
@@ -125,6 +130,7 @@ def test_run_result_returns_execution_result():
 
 
 # ── add_component (programmatic, no decorator) ────────────────────────────────
+
 
 def test_add_component_programmatic():
     pipeline = Pipeline()
@@ -157,6 +163,7 @@ def test_list_components_returns_all():
 
 # ── Custom store ──────────────────────────────────────────────────────────────
 
+
 def test_pipeline_with_custom_memory_store():
     store = MemoryStore()
     pipeline = Pipeline(store=store)
@@ -173,6 +180,7 @@ def test_pipeline_with_custom_memory_store():
 
 
 # ── Filter inputs ─────────────────────────────────────────────────────────────
+
 
 def test_filter_inputs_applied():
     pipeline = Pipeline()
@@ -194,6 +202,7 @@ def test_filter_inputs_applied():
 
 # ── Code components ──────────────────────────────────────────────────────────
 
+
 def test_code_component_exposes_functions():
     pipeline = Pipeline()
 
@@ -202,6 +211,7 @@ def test_code_component_exposes_functions():
         def normalise(values):
             lo, hi = min(values), max(values)
             return [(v - lo) / (hi - lo) for v in values]
+
         def clamp(v, lo, hi):
             return max(lo, min(hi, v))
 
@@ -228,6 +238,7 @@ def test_code_component_used_by_etl():
 
 
 # ── Cache invalidation ────────────────────────────────────────────────────────
+
 
 def test_invalidate_cache():
     pipeline = Pipeline()

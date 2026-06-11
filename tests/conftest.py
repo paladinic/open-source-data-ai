@@ -1,8 +1,9 @@
 """Shared fixtures for open_data_ai SDK tests."""
+
 import pytest
 import pytest_asyncio
 
-from open_data_ai.models import Component, ComponentType, Project, Dashboard, ChatMessage
+from open_data_ai.models import Component, ComponentType, Project
 from open_data_ai.storage.memory import MemoryStore
 from open_data_ai.storage.sqlite import SQLiteStore
 

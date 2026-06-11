@@ -1,8 +1,6 @@
 """Tests for open_data_ai.models — Pydantic model validation and defaults."""
-import pytest
-from open_data_ai.models import (
-    Component, ComponentType, Project, Dashboard, ChatMessage, UserSettings, AgentResponse
-)
+
+from open_data_ai.models import AgentResponse, Component, ComponentType, Project, UserSettings
 
 
 class TestComponent:
@@ -29,7 +27,9 @@ class TestComponent:
 
     def test_cells_take_precedence_over_code(self):
         c = Component(
-            project_id="p", name="nb", type=ComponentType.etl,
+            project_id="p",
+            name="nb",
+            type=ComponentType.etl,
             code="old code",
             cells=[{"id": "1", "source": "new code"}],
         )

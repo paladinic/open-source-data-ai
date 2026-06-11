@@ -1,7 +1,9 @@
 """
 Command-line interface stub for open-data-ai.
 """
+
 from __future__ import annotations
+
 import argparse
 import sys
 
@@ -47,6 +49,7 @@ def _serve(port: int, open_browser: bool) -> None:
     print(f"\n  open-data-ai  →  {url}\n  Press Ctrl+C to stop.\n")
 
     import uvicorn
+
     uvicorn.run(
         "main:app",
         app_dir=str(backend_dir),
