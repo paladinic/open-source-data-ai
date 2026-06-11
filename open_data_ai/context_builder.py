@@ -2,7 +2,9 @@
 Builds the system prompt for a specific component's chat thread.
 Injects: current component state, dependency column schemas, other project components.
 """
+
 from __future__ import annotations
+
 from open_data_ai.models import Component
 
 SYSTEM_PROMPT = """You are a data engineering assistant that helps users build ETL components \
@@ -136,6 +138,7 @@ Respond with valid JSON only."""
 
 def build_context(current: Component, all_components: list[Component]) -> str:
     import json as _json
+
     sections: list[str] = [SYSTEM_PROMPT]
 
     sections.append(f"""
@@ -145,33 +148,41 @@ def build_context(current: Component, all_components: list[Component]) -> str:
 - Type: {current.type.value}
 - Current description: {current.description or "(none yet)"}""")
 
-    cell_sources = [c.get("source", "") for c in current.cells if c.get("source", "").strip()] if current.cells else ([current.code] if current.code else [])
+    cell_sources = (
+        [c.get("source", "") for c in current.cells if c.get("source", "").strip()]
+        if current.cells
+        else ([current.code] if current.code else [])
+    )
     if cell_sources:
         if len(cell_sources) == 1:
             sections.append(f"\nCurrent code:\n```python\n{cell_sources[0]}\n```")
         else:
             joined = "\n\n# ── next cell ──\n\n".join(cell_sources)
-            sections.append(f"\nCurrent code ({len(cell_sources)} cells):\n```python\n{joined}\n```")
+            sections.append(
+                f"\nCurrent code ({len(cell_sources)} cells):\n```python\n{joined}\n```"
+            )
     if current.config:
         sections.append(f"\nCurrent config:\n```json\n{_json.dumps(current.config, indent=2)}\n```")
 
     dep_components = [c for c in all_components if c.id in current.depends_on]
     if dep_components:
         sections.append("\n## Dependencies and their output columns")
-        sections.append("(Use the component name in both `inputs['name']` and the `depends_on` list.)")
+        sections.append(
+            "(Use the component name in both `inputs['name']` and the `depends_on` list.)"
+        )
         for dep in dep_components:
-            schema_str = ", ".join(dep.output_schema) if dep.output_schema else "(run the component first to discover columns)"
-            sections.append(
-                f"- [{dep.type.value}] name={dep.name!r}\n  columns: {schema_str}"
+            schema_str = (
+                ", ".join(dep.output_schema)
+                if dep.output_schema
+                else "(run the component first to discover columns)"
             )
+            sections.append(f"- [{dep.type.value}] name={dep.name!r}\n  columns: {schema_str}")
 
     other = [c for c in all_components if c.id != current.id and c.id not in current.depends_on]
     if other:
         sections.append("\n## Other available components (can be added to depends_on)")
         for c in other:
             schema_str = f"  columns: {', '.join(c.output_schema)}" if c.output_schema else ""
-            sections.append(
-                f"- [{c.type.value}] name={c.name!r}{schema_str}"
-            )
+            sections.append(f"- [{c.type.value}] name={c.name!r}{schema_str}")
 
     return "\n".join(sections)

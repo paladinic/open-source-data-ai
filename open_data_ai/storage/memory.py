@@ -1,10 +1,11 @@
 """In-memory store — default backend for SDK/headless usage. No persistence."""
-from __future__ import annotations
-from datetime import datetime, timezone
-from typing import Any
 
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from open_data_ai.models import ChatMessage, Component, Dashboard, Project, UserSettings
 from open_data_ai.storage.base import BaseStore
-from open_data_ai.models import Project, Component, ChatMessage, Dashboard, UserSettings
 
 
 class MemoryStore(BaseStore):

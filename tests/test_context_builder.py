@@ -1,6 +1,6 @@
 """Tests for open_data_ai.context_builder — system prompt construction."""
-import pytest
-from open_data_ai.context_builder import build_context, SYSTEM_PROMPT
+
+from open_data_ai.context_builder import SYSTEM_PROMPT, build_context
 from open_data_ai.models import Component, ComponentType
 
 
@@ -67,7 +67,9 @@ class TestBuildContext:
 
     def test_cells_shown_when_present(self):
         comp = Component(
-            project_id="p", name="nb", type=ComponentType.etl,
+            project_id="p",
+            name="nb",
+            type=ComponentType.etl,
             cells=[
                 {"id": "1", "source": "x = 1"},
                 {"id": "2", "source": "x + 1"},

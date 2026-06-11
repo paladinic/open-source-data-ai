@@ -4,11 +4,14 @@ Executes generated Python component code in a restricted namespace.
 SECURITY NOTE: This is MVP-grade sandboxing only (namespace restriction).
 For production deployments, run execution in a separate process or container.
 """
+
 from __future__ import annotations
+
 import hashlib
 import time
 import traceback
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 from pydantic import BaseModel, field_serializer
 
 from open_data_ai.models import Component, ComponentType
@@ -33,8 +36,9 @@ def _sanitize_json(value: Any) -> Any:
     - datetime-like objects (pandas Timestamp, date, datetime) become ISO strings.
     - Anything else that can't be JSON-serialized is dropped (replaced with None).
     """
-    import json
     import datetime
+    import json
+
     if isinstance(value, dict):
         return {k: _sanitize_json(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -47,6 +51,7 @@ def _sanitize_json(value: Any) -> Any:
     # numpy scalars / arrays
     try:
         import numpy as np
+
         if isinstance(value, (np.integer, np.floating)):
             return value.item()
         if isinstance(value, np.ndarray):
@@ -89,11 +94,11 @@ class ExecutionResult(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     success: bool
-    rows: list[dict[str, Any]] = []        # for connector/pipeline components
-    columns: list[str] = []                # column names extracted after successful run
+    rows: list[dict[str, Any]] = []  # for connector/pipeline components
+    columns: list[str] = []  # column names extracted after successful run
     chart_config: dict[str, Any] | None = None  # for visualisation components
-    raw_output: Any = None                 # for components that return arbitrary Python objects (e.g. ML models)
-    raw_output_type: str = ""              # human-readable type name for API responses
+    raw_output: Any = None  # for components that return arbitrary Python objects (e.g. ML models)
+    raw_output_type: str = ""  # human-readable type name for API responses
     error: str = ""
     stdout: str = ""
 
@@ -120,7 +125,9 @@ def _filter_rows(dep_data: list, col: str, fval: Any) -> list:
     return dep_data
 
 
-def _apply_filter_inputs(resolved_inputs: dict[str, Any], filter_inputs: dict[str, Any]) -> dict[str, Any]:
+def _apply_filter_inputs(
+    resolved_inputs: dict[str, Any], filter_inputs: dict[str, Any]
+) -> dict[str, Any]:
     """
     Apply filter values to dependency data.
 
@@ -201,7 +208,9 @@ async def run_component(
             if now - ts < CACHE_TTL:
                 return cached
 
-    result = await _run_component(component, store=store, inputs=inputs, filter_inputs=filter_inputs, up_to_cell=up_to_cell)
+    result = await _run_component(
+        component, store=store, inputs=inputs, filter_inputs=filter_inputs, up_to_cell=up_to_cell
+    )
 
     if cacheable and result.success:
         key = (await _cache_key(component, store)) + _filter_suffix(filter_inputs)
@@ -210,7 +219,9 @@ async def run_component(
     return result
 
 
-def _exec_cells(sources: list[str], namespace: dict[str, Any], resolved_inputs: dict[str, Any]) -> Any:
+def _exec_cells(
+    sources: list[str], namespace: dict[str, Any], resolved_inputs: dict[str, Any]
+) -> Any:
     """Run cells sequentially; capture the last expression of the final cell."""
     import ast as _ast
 
@@ -269,7 +280,9 @@ async def _run_component(
 
     combined_filters: dict[str, Any] = {**(filter_inputs or {}), **(inputs or {})}
 
-    resolved_inputs = await _build_inputs(component, store=store, filter_inputs=combined_filters or None)
+    resolved_inputs = await _build_inputs(
+        component, store=store, filter_inputs=combined_filters or None
+    )
     if combined_filters:
         resolved_inputs = _apply_filter_inputs(resolved_inputs, combined_filters)
     if inputs:
@@ -287,10 +300,10 @@ async def _run_component(
         # downstream components can call inputs['my_utils'].my_function(...).
         if component.type == ComponentType.code:
             import types as _types
-            ns = _types.SimpleNamespace(**{
-                k: v for k, v in namespace.items()
-                if not k.startswith("_") and k != "inputs"
-            })
+
+            ns = _types.SimpleNamespace(
+                **{k: v for k, v in namespace.items() if not k.startswith("_") and k != "inputs"}
+            )
             if component.last_run_ok is not True:
                 component.last_run_ok = True
                 component.last_error = ""
@@ -312,7 +325,9 @@ async def _run_component(
                 component.last_run_ok = True
                 component.last_error = ""
                 await store.save_component(component)
-            return ExecutionResult(success=True, chart_config=_sanitize_json(result), stdout=buf.getvalue())
+            return ExecutionResult(
+                success=True, chart_config=_sanitize_json(result), stdout=buf.getvalue()
+            )
 
         if hasattr(result, "to_dict"):
             rows = _sanitize_json(result.to_dict(orient="records"))

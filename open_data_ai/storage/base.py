@@ -1,12 +1,13 @@
 """Abstract base class for all storage backends."""
+
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
-from open_data_ai.models import Project, Component, ChatMessage, Dashboard, UserSettings
+from open_data_ai.models import ChatMessage, Component, Dashboard, Project, UserSettings
 
 
 class BaseStore(ABC):
-
     async def init(self) -> None:
         """One-time setup (create tables, etc.). No-op by default."""
 

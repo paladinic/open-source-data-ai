@@ -7,6 +7,7 @@ Usage:
     python run_lite.py --port 9000
     python run_lite.py --no-browser
 """
+
 import argparse
 import os
 import sys
@@ -23,7 +24,9 @@ sys.path.insert(0, str(_repo_root))  # needed for open_data_ai when not pip-inst
 def main():
     parser = argparse.ArgumentParser(description="Open-Source Data AI (lite mode)")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--no-browser", action="store_true", help="Don't open a browser tab automatically")
+    parser.add_argument(
+        "--no-browser", action="store_true", help="Don't open a browser tab automatically"
+    )
     args = parser.parse_args()
 
     # Lite mode is triggered by an empty SUPABASE_URL.
@@ -39,6 +42,7 @@ def main():
     print(f"\n  Open-Source Data AI  →  {url}\n  Press Ctrl+C to stop.\n")
 
     import uvicorn
+
     uvicorn.run(
         "main:app",
         app_dir=str(Path(__file__).parent / "backend"),

@@ -6,6 +6,7 @@ that holds the full JSON-serialised Pydantic model.  This keeps the schema
 simple and forward-compatible — adding new model fields never requires a
 migration.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,8 +15,8 @@ from pathlib import Path
 
 import aiosqlite
 
+from open_data_ai.models import ChatMessage, Component, Dashboard, Project, UserSettings
 from open_data_ai.storage.base import BaseStore
-from open_data_ai.models import Project, Component, ChatMessage, Dashboard, UserSettings
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
@@ -88,7 +89,9 @@ class SQLiteStore(BaseStore):
 
     async def delete_project(self, project_id: str) -> bool:
         async with aiosqlite.connect(self._db_path) as db:
-            async with db.execute("SELECT id FROM components WHERE project_id=?", (project_id,)) as cur:
+            async with db.execute(
+                "SELECT id FROM components WHERE project_id=?", (project_id,)
+            ) as cur:
                 comp_ids = [r[0] async for r in cur]
             for cid in comp_ids:
                 await db.execute("DELETE FROM messages WHERE component_id=?", (cid,))
@@ -166,7 +169,9 @@ class SQLiteStore(BaseStore):
 
     # ── messages ───────────────────────────────────────────────────────────────
 
-    async def get_messages(self, project_id: str, component_id: str | None = None) -> list[ChatMessage]:
+    async def get_messages(
+        self, project_id: str, component_id: str | None = None
+    ) -> list[ChatMessage]:
         async with aiosqlite.connect(self._db_path) as db:
             if component_id is not None:
                 q = "SELECT data FROM messages WHERE project_id=? AND component_id=? ORDER BY created_at"
@@ -182,7 +187,13 @@ class SQLiteStore(BaseStore):
         async with aiosqlite.connect(self._db_path) as db:
             await db.execute(
                 "INSERT OR REPLACE INTO messages (id, project_id, component_id, created_at, data) VALUES (?,?,?,?,?)",
-                (message.id, message.project_id, message.component_id, message.created_at.isoformat(), data),
+                (
+                    message.id,
+                    message.project_id,
+                    message.component_id,
+                    message.created_at.isoformat(),
+                    data,
+                ),
             )
             await db.commit()
         return message

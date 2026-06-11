@@ -2,18 +2,20 @@
 Tests for open_data_ai.executor — component code execution, caching, dependency resolution.
 Uses MemoryStore directly (no mocking needed for the store layer).
 """
+
 import pytest
-from unittest.mock import AsyncMock
 
 import open_data_ai.executor as executor_module
-from open_data_ai.executor import run_component, invalidate_cache, ExecutionResult, CACHE_TTL
+from open_data_ai.executor import CACHE_TTL, ExecutionResult, invalidate_cache, run_component
 from open_data_ai.models import Component, ComponentType
 from open_data_ai.storage.memory import MemoryStore
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def make_component(code="", name="comp", project_id="proj-1", depends_on=None, type=ComponentType.etl):
+
+def make_component(
+    code="", name="comp", project_id="proj-1", depends_on=None, type=ComponentType.etl
+):
     return Component(
         project_id=project_id,
         name=name,
@@ -37,6 +39,7 @@ def store():
 
 # ── No-code component ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_no_code_returns_error(store):
     comp = make_component(code="")
@@ -46,6 +49,7 @@ async def test_no_code_returns_error(store):
 
 
 # ── ETL: tabular output ───────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_list_of_dicts_output(store):
@@ -87,6 +91,7 @@ async def test_pandas_dataframe_output(store):
 
 # ── Visualisation: dict output ────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_chart_config_output(store):
     code = "{'type': 'bar', 'data': {}, 'options': {}}"
@@ -99,6 +104,7 @@ async def test_chart_config_output(store):
 
 # ── Model: raw object output ──────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_raw_object_output(store):
     code = "object()"
@@ -110,6 +116,7 @@ async def test_raw_object_output(store):
 
 
 # ── Error handling ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_syntax_error_returns_failure(store):
@@ -136,6 +143,7 @@ async def test_stdout_is_captured(store):
 
 
 # ── Caching ───────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_successful_result_is_cached(store):
@@ -191,6 +199,7 @@ def test_invalidate_cache_clears_all():
 
 # ── Dependency resolution ─────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_dependency_output_passed_as_inputs(store):
     dep = make_component(code="[{'dep_val': 42}]", name="my_dep")
@@ -245,6 +254,7 @@ async def test_filter_applied_to_dependency(store):
 
 
 # ── Code components ──────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_code_component_returns_namespace(store):
@@ -316,10 +326,13 @@ async def test_code_component_not_filtered(store):
 
 # ── Notebook-style cells ──────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_multi_cell_execution(store):
     comp = Component(
-        project_id="p", name="nb", type=ComponentType.etl,
+        project_id="p",
+        name="nb",
+        type=ComponentType.etl,
         cells=[
             {"id": "1", "source": "x = 10"},
             {"id": "2", "source": "[{'value': x * 2}]"},
